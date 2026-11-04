@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupAdminEvents();
 });
 
+// Kiểm tra trạng thái Đăng nhập Admin
 function checkAdminAuth() {
   const currentAdmin = localStorage.getItem("CHECKIN_ADMIN_SESSION");
   const loginCard = document.getElementById("admin-login-card");
@@ -13,7 +14,7 @@ function checkAdminAuth() {
     loginCard?.classList.add("hidden");
     dashboardContent?.classList.remove("hidden");
     logoutBtn?.classList.remove("hidden");
-    loadLeadersList(); // Tự động nạp danh sách Leader sau khi đăng nhập
+    loadLeadersList(); // Nạp danh sách Leader khi đã đăng nhập
   } else {
     loginCard?.classList.remove("hidden");
     dashboardContent?.classList.add("hidden");
@@ -22,7 +23,7 @@ function checkAdminAuth() {
 }
 
 function setupAdminEvents() {
-  // Tab Switcher
+  // Navigation Tabs Switcher
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -32,7 +33,7 @@ function setupAdminEvents() {
     });
   });
 
-  // Login & Logout
+  // Sự kiện Đăng nhập & Đăng xuất
   document.getElementById("btn-admin-login")?.addEventListener("click", handleAdminLogin);
   document.getElementById("btn-admin-logout")?.addEventListener("click", () => {
     localStorage.removeItem("CHECKIN_ADMIN_SESSION");
@@ -43,7 +44,42 @@ function setupAdminEvents() {
   document.getElementById("btn-reset-device")?.addEventListener("click", handleResetDevice);
 }
 
-// 1. Tải danh sách Leader từ Backend
+// 1. Hàm Đăng Nhập Admin trên Frontend
+async function handleAdminLogin() {
+  const email = document.getElementById("admin-login-email").value.trim();
+  const password = document.getElementById("admin-login-pass").value.trim();
+
+  if (!email || !password) {
+    alert("Vui lòng nhập đầy đủ Email và Mật khẩu!");
+    return;
+  }
+
+  try {
+    const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "adminLogin",
+        email: email,
+        password: password
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      localStorage.setItem("CHECKIN_ADMIN_SESSION", data.email);
+      alert(data.message);
+      checkAdminAuth();
+    } else {
+      alert("Lỗi đăng nhập: " + data.error);
+    }
+  } catch (err) {
+    alert("Không thể kết nối máy chủ: " + err.toString());
+  }
+}
+
+// 2. Tải danh sách Leader từ Backend
 async function loadLeadersList() {
   const adminEmail = localStorage.getItem("CHECKIN_ADMIN_SESSION");
   const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
@@ -61,11 +97,11 @@ async function loadLeadersList() {
       alert("Không thể tải danh sách: " + data.error);
     }
   } catch (err) {
-    console.error(err);
+    console.error("Lỗi nạp danh sách Leader:", err);
   }
 }
 
-// 2. Render Danh sách Chờ Duyệt (Pending Cards)
+// 3. Render Danh sách Chờ Duyệt
 function renderPendingList(list) {
   const container = document.getElementById("pending-list-container");
   if (!container) return;
@@ -89,7 +125,7 @@ function renderPendingList(list) {
   `).join("");
 }
 
-// 3. Render Danh sách Leader Đã Duyệt
+// 4. Render Danh sách Leader Đã Duyệt
 function renderActiveList(list) {
   const container = document.getElementById("active-list-container");
   if (!container) return;
@@ -114,7 +150,7 @@ function renderActiveList(list) {
   `;
 }
 
-// 4. Hàm xử lý Duyệt / Từ Chối 1-Click
+// 5. Xử lý Duyệt / Từ Chối 1-Click
 async function processAction(targetEmail, actionType) {
   const adminEmail = localStorage.getItem("CHECKIN_ADMIN_SESSION");
   const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
@@ -131,8 +167,40 @@ async function processAction(targetEmail, actionType) {
     });
     const data = await res.json();
     alert(data.message);
-    loadLeadersList(); // Tải lại danh sách sau khi bấm nút
+    loadLeadersList();
   } catch (err) {
     alert("Lỗi thao tác: " + err.toString());
+  }
+}
+
+// 6. Reset Thiết Bị cho Thành viên
+async function handleResetDevice() {
+  const adminEmail = localStorage.getItem("CHECKIN_ADMIN_SESSION");
+  const userId = document.getElementById("reset-user-id").value.trim().toUpperCase();
+
+  if (!userId) return alert("Vui lòng nhập Mã người dùng!");
+
+  try {
+    const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "resetDevice",
+        email: adminEmail,
+        userId: userId
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById("reset-result").classList.remove("hidden");
+      document.getElementById("new-activation-code").textContent = data.newActivationCode;
+      alert(data.message);
+    } else {
+      alert("Lỗi reset: " + data.error);
+    }
+  } catch (err) {
+    alert("Lỗi kết nối: " + err.toString());
   }
 }
