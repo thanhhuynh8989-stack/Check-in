@@ -157,16 +157,25 @@ function tickScan() {
 }
 
 // 3. Member Bắt Buộc Gửi GPS & Quét QR Điểm Danh
+// Biến cờ ngăn chặn gọi GPS chồng chéo (Throttle)
+let isRequestingGPS = false;
+
+// 3. Member Điểm Danh (Đã sửa lỗi hỏi quyền GPS liên tục)
 function submitCheckinRequest(rawQrCode) {
+  // Nếu đang xử lý một request GPS trước đó thì bỏ qua, tránh spam
+  if (isRequestingGPS) return;
+
   if (!navigator.geolocation) {
-    alert("Thiết bị của bạn không hỗ trợ GPS!");
-    scanning = true;
-    requestAnimationFrame(tickScan);
+    alert("Thiết bị của bạn không hỗ trợ định vị GPS!");
+    resumeScanningWithDelay(2000); // Tạm dừng 2s trước khi quét lại
     return;
   }
 
+  isRequestingGPS = true;
+  scanning = false; // Tắt scanner ngay lập tức để ngắt vòng lặp requestAnimationFrame
+
   const status = document.getElementById("scan-status");
-  if (status) status.textContent = "Đang lấy vị trí GPS...";
+  if (status) status.textContent = "📍 Đang xác minh vị trí GPS...";
 
   let targetSessionId = localStorage.getItem("CURRENT_SESSION_ID") || "SESS_ACTIVE";
   let payloadCode = rawQrCode;
@@ -177,42 +186,69 @@ function submitCheckinRequest(rawQrCode) {
     payloadCode = parts[1].trim();
   }
 
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    showLoading(true);
-    try {
-      const res = await fetch(WEB_APP_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "submitCheckin",
-          token: currentUser.token,
-          sessionId: targetSessionId,
-          qrCode: payloadCode,
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showResultCard(data);
-        saveHistory(data);
-      } else {
-        alert("Điểm danh thất bại: " + data.error);
-        scanning = true;
-        requestAnimationFrame(tickScan);
+  // Cấu hình GPS tối ưu: Cho phép dùng vị trí vừa lấy trong vòng 5 giây (maximumAge)
+  const gpsOptions = {
+    enableHighAccuracy: true,
+    timeout: 8000,       // Hạn giờ 8s
+    maximumAge: 5000     // Sử dụng cache vị trí 5s gần nhất để tránh bật GPS phần cứng liên tục
+  };
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      showLoading(true);
+      try {
+        const res = await fetch(WEB_APP_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "submitCheckin",
+            token: currentUser.token,
+            sessionId: targetSessionId,
+            qrCode: payloadCode,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy
+          })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          showResultCard(data);
+          saveHistory(data);
+        } else {
+          alert("Điểm danh thất bại: " + data.error);
+          resumeScanningWithDelay(3000); // Chờ 3 giây mới cho phép quét lại
+        }
+      } catch (err) {
+        alert("Lỗi kết nối máy chủ!");
+        resumeScanningWithDelay(3000);
+      } finally {
+        showLoading(false);
+        isRequestingGPS = false;
       }
-    } catch (err) {
-      alert("Lỗi kết nối máy chủ!");
-      scanning = true;
-      requestAnimationFrame(tickScan);
-    } finally {
-      showLoading(false);
-    }
-  }, (err) => {
-    alert("Vui lòng cấp quyền GPS để hệ thống tính khoảng cách điểm danh!");
+    },
+    (err) => {
+      isRequestingGPS = false;
+      
+      let errMsg = "Vui lòng bật quyền GPS trên trình duyệt để điểm danh!";
+      if (err.code === err.TIMEOUT) {
+        errMsg = "Quá thời gian lấy vị trí GPS. Vui lòng di chuyển ra nơi thoáng hoặc thử lại!";
+      } else if (err.code === err.POSITION_UNAVAILABLE) {
+        errMsg = "Không thể xác định vị trí hiện tại. Hãy kiểm tra kết nối mạng/GPS!";
+      }
+
+      alert(errMsg);
+      resumeScanningWithDelay(3000); // Dừng camera 3s trước khi cho phép quét tiếp
+    },
+    gpsOptions
+  );
+}
+
+// Hàm phụ trợ: Tạm dừng quét QR trong khoảng thời gian (ms) để không bị spam popup GPS
+function resumeScanningWithDelay(delayMs) {
+  setTimeout(() => {
     scanning = true;
     requestAnimationFrame(tickScan);
-  }, { enableHighAccuracy: true, timeout: 10000 });
+  }, delayMs || 2000);
 }
 
 function showResultCard(data) {
