@@ -46,9 +46,10 @@ function checkLeaderAuth() {
 }
 
 function setupLeaderAuthEvents() {
+  // 1. Đăng Nhập Leader
   document.getElementById("btn-leader-login")?.addEventListener("click", async () => {
-    const email = document.getElementById("leader-login-email").value.trim();
-    const password = document.getElementById("leader-login-pass").value.trim();
+    const email = document.getElementById("leader-login-email")?.value.trim();
+    const password = document.getElementById("leader-login-pass")?.value.trim();
 
     if (!email || !password) return alert("Vui lòng nhập Email và Mật khẩu!");
 
@@ -72,14 +73,53 @@ function setupLeaderAuthEvents() {
     }
   });
 
+  // 2. Đăng Xuất Leader
   document.getElementById("btn-leader-logout")?.addEventListener("click", () => {
     localStorage.removeItem("CHECKIN_LEADER_SESSION");
     checkLeaderAuth();
   });
 
+  // 3. Làm mới danh sách Nhóm
   document.getElementById("btn-refresh-groups")?.addEventListener("click", loadLeaderGroups);
-}
 
+  // 4. Reset Thiết Bị Cho Thành Viên (Chức năng mới dành cho Leader)
+  document.getElementById("btn-leader-reset-device")?.addEventListener("click", async () => {
+    const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
+    const userId = document.getElementById("leader-reset-user-id")?.value.trim().toUpperCase();
+
+    if (!leaderEmail) return alert("Vui lòng đăng nhập tài khoản Leader trước!");
+    if (!userId) return alert("Vui lòng nhập Mã thành viên cần Reset!");
+
+    if (!confirm(`Bạn có chắc muốn Reset thiết bị và cấp mã kích hoạt mới cho thành viên ${userId}?`)) return;
+
+    try {
+      const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "leaderResetDevice",
+          email: leaderEmail,
+          userId: userId
+        })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        const resultCard = document.getElementById("leader-reset-result");
+        const codeElem = document.getElementById("leader-new-code");
+        
+        if (resultCard) resultCard.classList.remove("hidden");
+        if (codeElem) codeElem.textContent = data.newActivationCode;
+        
+        alert(data.message);
+      } else {
+        alert("Lỗi reset thiết bị: " + data.error);
+      }
+    } catch (err) {
+      alert("Không thể kết nối máy chủ: " + err.toString());
+    }
+  });
+}
 // 1. Tải Danh Sách Nhóm & Đổ vào Dropdown + Render Cards
 async function loadLeaderGroups() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
