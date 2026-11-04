@@ -1,13 +1,31 @@
 let parsedMembersData = [];
 let lastUploadResult = [];
+let isSheetVerified = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   checkLeaderAuth();
+  setupTabEvents();
   setupLeaderAuthEvents();
   setupUploadTabEvents();
+  setupRegisterPageEvents();
 });
 
-// Kiểm tra phiên Đăng nhập Leader
+// 1. Chuyển đổi Tab linh hoạt (Hỗ trợ Mobile)
+function setupTabEvents() {
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.add("hidden"));
+      
+      const targetBtn = e.currentTarget;
+      targetBtn.classList.add("active");
+      const targetTabId = targetBtn.dataset.tab;
+      document.getElementById(targetTabId)?.classList.remove("hidden");
+    });
+  });
+}
+
+// 2. Kiểm tra trạng thái Đăng nhập Leader
 function checkLeaderAuth() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   const loginCard = document.getElementById("leader-login-card");
@@ -20,7 +38,7 @@ function checkLeaderAuth() {
     dashboardContent?.classList.remove("hidden");
     logoutBtn?.classList.remove("hidden");
     if (badge) badge.textContent = leaderEmail;
-    loadLeaderGroups(); // Tự động nạp danh sách nhóm của Leader
+    loadLeaderGroups();
   } else {
     loginCard?.classList.remove("hidden");
     dashboardContent?.classList.add("hidden");
@@ -30,7 +48,7 @@ function checkLeaderAuth() {
 }
 
 function setupLeaderAuthEvents() {
-  // 1. Đăng Nhập Leader
+  // Sự kiện Đăng Nhập
   document.getElementById("btn-leader-login")?.addEventListener("click", async () => {
     const email = document.getElementById("leader-login-email").value.trim();
     const password = document.getElementById("leader-login-pass").value.trim();
@@ -44,11 +62,7 @@ function setupLeaderAuthEvents() {
       const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
       const res = await fetch(apiUrl, {
         method: "POST",
-        body: JSON.stringify({
-          action: "leaderLogin",
-          email: email,
-          password: password
-        })
+        body: JSON.stringify({ action: "leaderLogin", email: email, password: password })
       });
       const data = await res.json();
 
@@ -64,7 +78,7 @@ function setupLeaderAuthEvents() {
     }
   });
 
-  // 2. Đăng Xuất Leader
+  // Sự kiện Đăng Xuất
   document.getElementById("btn-leader-logout")?.addEventListener("click", () => {
     localStorage.removeItem("CHECKIN_LEADER_SESSION");
     checkLeaderAuth();
@@ -73,7 +87,102 @@ function setupLeaderAuthEvents() {
   document.getElementById("btn-refresh-groups")?.addEventListener("click", loadLeaderGroups);
 }
 
-// 3. Tải Danh Sách Nhóm Của Leader
+// 3. Sự kiện Đăng Ký Leader (Cho trang register-leader.html)
+function setupRegisterPageEvents() {
+  // Kiểm tra link Sheet riêng
+  document.getElementById("btn-verify-sheet")?.addEventListener("click", async () => {
+    const customSheetUrl = document.getElementById("sheet-url")?.value.trim();
+    const statusText = document.getElementById("sheet-verify-status");
+
+    if (!customSheetUrl) {
+      alert("Vui lòng dán Link Google Sheet riêng trước khi kiểm tra!");
+      return;
+    }
+
+    if (statusText) statusText.textContent = "⏳ Đang kiểm tra quyền truy cập...";
+
+    try {
+      const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        body: JSON.stringify({ action: "verifyCustomSheet", customSheetUrl: customSheetUrl })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        isSheetVerified = true;
+        if (statusText) {
+          statusText.style.color = "var(--success)";
+          statusText.textContent = `✅ Kết nối thành công tới Sheet: "${data.title}"`;
+        }
+        alert("Kết nối Google Sheet thành công!");
+      } else {
+        isSheetVerified = false;
+        if (statusText) {
+          statusText.style.color = "var(--danger)";
+          statusText.textContent = `❌ Lỗi: ${data.error}`;
+        }
+        alert("Không thể truy cập Google Sheet riêng! Hãy cấp quyền Chia sẻ (Editor) cho Apps Script.");
+      }
+    } catch (err) {
+      alert("Lỗi kiểm tra Sheet: " + err.toString());
+    }
+  });
+
+  // Gửi yêu cầu Đăng ký
+  document.getElementById("btn-register-leader")?.addEventListener("click", async () => {
+    const fullName = document.getElementById("leader-name")?.value.trim();
+    const email = document.getElementById("leader-email")?.value.trim();
+    const pass = document.getElementById("leader-pass")?.value.trim();
+    const passConfirm = document.getElementById("leader-pass-confirm")?.value.trim();
+    const customSheetUrl = document.getElementById("sheet-url")?.value.trim();
+
+    if (!fullName || !email || !pass) {
+      alert("Vui lòng điền đầy đủ Họ tên, Email và Mật khẩu!");
+      return;
+    }
+
+    if (pass.length < 6) {
+      alert("Mật khẩu phải có tối thiểu 6 ký tự!");
+      return;
+    }
+
+    if (pass !== passConfirm) {
+      alert("Mật khẩu xác nhận không trùng khớp!");
+      return;
+    }
+
+    if (customSheetUrl && !isSheetVerified) {
+      if (!confirm("Bạn chưa bấm kiểm tra kết nối Link Sheet riêng. Bạn có chắc muốn tiếp tục?")) return;
+    }
+
+    try {
+      const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "registerLeader",
+          fullName: fullName,
+          email: email,
+          password: pass,
+          customSheetUrl: customSheetUrl
+        })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        alert(data.message);
+        window.location.href = "leader.html";
+      } else {
+        alert("Lỗi đăng ký: " + data.error);
+      }
+    } catch (err) {
+      alert("Không thể kết nối máy chủ: " + err.toString());
+    }
+  });
+}
+
+// 4. Quản lý danh sách Nhóm
 async function loadLeaderGroups() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   if (!leaderEmail) return;
@@ -90,7 +199,7 @@ async function loadLeaderGroups() {
       renderLeaderGroups(data.groups);
     }
   } catch (err) {
-    console.error("Lỗi tải danh sách nhóm:", err);
+    console.error("Lỗi tải nhóm:", err);
   }
 }
 
@@ -99,7 +208,7 @@ function renderLeaderGroups(groups) {
   if (!container) return;
 
   if (!groups || groups.length === 0) {
-    container.innerHTML = '<p class="sub-text">Bạn chưa phụ trách nhóm nào. Hãy sang tab "Nhập/Xuất Data" để Upload danh sách thành viên mới!</p>';
+    container.innerHTML = '<p class="sub-text">Bạn chưa phụ trách nhóm nào. Hãy sang tab "Nhập/Xuất Data" để Upload danh sách mới!</p>';
     return;
   }
 
@@ -111,9 +220,8 @@ function renderLeaderGroups(groups) {
   `).join("");
 }
 
-// 4. Xử Lý Tab Upload (Tự Động Lấy Email Leader Đã Đăng Nhập)
+// 5. Xử Lý Upload Data Excel
 function setupUploadTabEvents() {
-  // Tải Template Excel
   document.getElementById("btn-download-template")?.addEventListener("click", () => {
     const templateData = [
       ["MãNgười", "HọTên", "MãNhóm", "GhiChú"],
@@ -126,7 +234,6 @@ function setupUploadTabEvents() {
     XLSX.writeFile(wb, "Mau_Danh_Sach_Thanh_Vien.xlsx");
   });
 
-  // Đọc File Excel
   document.getElementById("excel-file-input")?.addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -146,8 +253,9 @@ function setupUploadTabEvents() {
       })).filter(item => item.userId !== "" && item.fullName !== "");
 
       if (parsedMembersData.length > 0) {
-        document.getElementById("file-preview-box").classList.remove("hidden");
-        document.getElementById("preview-count").textContent = parsedMembersData.length;
+        document.getElementById("file-preview-box")?.classList.remove("hidden");
+        const countElem = document.getElementById("preview-count");
+        if (countElem) countElem.textContent = parsedMembersData.length;
       } else {
         alert("File Excel không có dữ liệu hợp lệ!");
       }
@@ -155,7 +263,6 @@ function setupUploadTabEvents() {
     reader.readAsArrayBuffer(file);
   });
 
-  // Upload Danh Sách (Tự động đính kèm Email Leader)
   document.getElementById("btn-process-upload")?.addEventListener("click", async () => {
     const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
     if (!leaderEmail) return alert("Vui lòng đăng nhập tài khoản Leader!");
@@ -175,7 +282,7 @@ function setupUploadTabEvents() {
         alert(`Đã xử lý ${data.totalUploaded} thành viên (${data.newCreated} mã kích hoạt mới được sinh).`);
         lastUploadResult = data.resultCodes;
         renderUploadResultTable(data.resultCodes);
-        loadLeaderGroups(); // Refresh lại danh sách nhóm
+        loadLeaderGroups();
       } else {
         alert("Lỗi upload: " + data.error);
       }
@@ -184,7 +291,6 @@ function setupUploadTabEvents() {
     }
   });
 
-  // Xuất File Kết Quả
   document.getElementById("btn-export-result-excel")?.addEventListener("click", () => {
     if (lastUploadResult.length === 0) return;
     const exportData = lastUploadResult.map(item => ({
