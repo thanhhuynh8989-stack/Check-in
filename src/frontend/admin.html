@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Check-in</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>🛡️ Quản Trị Hệ Thống (Admin)</h1>
+    </header>
+
+    <!-- Quản Lý Phê Duyệt Leader -->
+    <div class="card">
+      <h3>Duyệt Tài Khoản Leader</h3>
+      <div class="form-inline">
+        <input type="email" id="approve-email" placeholder="Nhập Email Leader cần duyệt">
+        <button id="btn-approve-leader" class="btn primary">Duyệt</button>
+      </div>
+    </div>
+
+    <!-- Reset Thiết Bị Thành Viên -->
+    <div class="card">
+      <h3>Reset Thiết Bị (Cho Thành Viên Đổi Máy)</h3>
+      <p class="sub-text">Xóa khóa máy cũ và cấp lại Mã Kích Hoạt mới cho người dùng.</p>
+      <div class="form-group">
+        <label>Mã Người Dùng (Mã NV/HS)</label>
+        <input type="text" id="reset-user-id" placeholder="VD: NV001" style="text-transform: uppercase;">
+      </div>
+      <button id="btn-reset-device" class="btn danger">Reset Thiết Bị & Tạo Mã Mới</button>
+
+      <div id="reset-result" class="ticket-box hidden" style="margin-top: 15px;">
+        <span>Mã Kích Hoạt Mới Cho Thành Viên:</span>
+        <h2 id="new-activation-code" style="color: var(--primary);">X7K2M9P4</h2>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>
