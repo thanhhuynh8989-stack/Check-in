@@ -9,14 +9,13 @@
 <body>
   <div class="app-container">
     <header class="app-header">
-      <h1>🛡️ Quản Trị Hệ Thống (Admin)</h1>
+      <h1>🛡️ Quản Trị Hệ Thống</h1>
       <button id="btn-admin-logout" class="btn secondary hidden" style="width: auto; padding: 4px 10px; font-size: 0.8rem;">Đăng xuất</button>
     </header>
 
-    <!-- FORM DĂNG NHẬP ADMIN -->
+    <!-- FORM ĐĂNG NHẬP ADMIN -->
     <section id="admin-login-card" class="card">
-      <h2>🔐 Đăng Nhập Quản Trị Viên</h2>
-      <p class="sub-text">Nhập Email Admin và Mật khẩu để truy cập Dashboard.</p>
+      <h2>🔐 Đăng Nhập Admin</h2>
       <div class="form-group">
         <label>Email Admin</label>
         <input type="email" id="admin-login-email" placeholder="admin@gmail.com">
@@ -28,42 +27,60 @@
       <button id="btn-admin-login" class="btn primary">Đăng Nhập</button>
     </section>
 
-    <!-- DASHBOARD ADMIN (Chỉ hiển thị sau khi đăng nhập thành công) -->
+    <!-- MAIN ADMIN DASHBOARD -->
     <main id="admin-dashboard-content" class="hidden">
-      <!-- Card Duyệt Leader -->
-      <div class="card">
-        <h3>Duyệt Tài Khoản Leader</h3>
-        <p class="sub-text">Phê duyệt quyền tạo phiên và quản lý nhóm cho Leader.</p>
-        <div class="form-inline">
-          <input type="email" id="approve-email" placeholder="Email Leader cần duyệt">
-          <button id="btn-approve-leader" class="btn primary">Duyệt</button>
-        </div>
-      </div>
+      <!-- Nav Tabs -->
+      <nav class="tab-bar">
+        <button class="tab-btn active" data-tab="tab-leaders">👔 Quản Lý Leader</button>
+        <button class="tab-btn" data-tab="tab-reset">🛠️ Reset Thiết Bị</button>
+      </nav>
 
-      <!-- Card Reset Thiết Bị -->
-      <div class="card">
-        <h3>Reset Thiết Bị (Thành Viên Đổi Máy)</h3>
-        <p class="sub-text">Xóa khóa máy cũ và sinh Mã Kích Hoạt 8 ký tự mới cho người dùng.</p>
-        <div class="form-group">
-          <label>Mã Người Dùng (Mã NV/HS)</label>
-          <input type="text" id="reset-user-id" placeholder="VD: NV001" style="text-transform: uppercase;">
+      <!-- TAB 1: QUẢN LÝ LEADER -->
+      <section id="tab-leaders" class="tab-content active">
+        <!-- 1. Danh Sách Chờ Duyệt -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3>⏳ Yêu Cầu Chờ Duyệt</h3>
+            <button id="btn-refresh-leaders" class="btn secondary" style="width: auto; padding: 4px 10px; font-size: 0.8rem;">🔄 Làm mới</button>
+          </div>
+          <div id="pending-list-container">
+            <p class="sub-text">Đang tải danh sách chờ...</p>
+          </div>
         </div>
-        <button id="btn-reset-device" class="btn danger">Reset Thiết Bị & Tạo Mã Mới</button>
 
-        <div id="reset-result" class="ticket-box hidden" style="margin-top: 15px;">
-          <span>Mã Kích Hoạt Mới Cho Thành Viên:</span>
-          <h2 id="new-activation-code" style="color: var(--primary);">--------</h2>
+        <!-- 2. Danh Sách Leader Đã Duyệt -->
+        <div class="card">
+          <h3>✅ Danh Sách Leader Đang Hoạt Động</h3>
+          <div id="active-list-container">
+            <p class="sub-text">Đang tải danh sách Leader...</p>
+          </div>
         </div>
-      </div>
+      </section>
+
+      <!-- TAB 2: RESET THIẾT BỊ -->
+      <section id="tab-reset" class="tab-content hidden">
+        <div class="card">
+          <h3>Reset Thiết Bị (Thành Viên Đổi Máy)</h3>
+          <p class="sub-text">Xóa khóa máy cũ và sinh Mã Kích Hoạt 8 ký tự mới cho người dùng.</p>
+          <div class="form-group">
+            <label>Mã Người Dùng (Mã NV/HS)</label>
+            <input type="text" id="reset-user-id" placeholder="VD: NV001" style="text-transform: uppercase;">
+          </div>
+          <button id="btn-reset-device" class="btn danger">Reset Thiết Bị & Tạo Mã Mới</button>
+
+          <div id="reset-result" class="ticket-box hidden" style="margin-top: 15px;">
+            <span>Mã Kích Hoạt Mới Cho Thành Viên:</span>
+            <h2 id="new-activation-code" style="color: var(--primary);">--------</h2>
+          </div>
+        </div>
+      </section>
     </main>
 
-    <!-- Footer Điều Hướng -->
     <footer style="margin-top: 20px; padding-top: 10px; text-align: center; border-top: 1px dashed #ccc;">
       <a href="index.html" style="color: var(--primary); font-size: 0.85rem; text-decoration: none;">← Quay lại Trang Thành Viên</a>
     </footer>
   </div>
 
-  <!-- BẮT BUỘC: Nạp app.js chứa WEB_APP_URL trước, sau đó mới nạp admin.js -->
   <script src="js/app.js"></script>
   <script src="js/admin.js"></script>
 </body>
