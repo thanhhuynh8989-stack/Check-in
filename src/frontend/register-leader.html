@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng Ký Leader - Check-in</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>👔 Đăng Ký Leader / Quản Lý</h1>
+    </header>
+
+    <div class="card">
+      <h2>Thông Tin Đăng Ký</h2>
+      <div class="form-group">
+        <label>Họ và Tên</label>
+        <input type="text" id="leader-name" placeholder="VD: Nguyễn Văn A">
+      </div>
+      <div class="form-group">
+        <label>Email Google</label>
+        <input type="email" id="leader-email" placeholder="example@gmail.com">
+      </div>
+      <div class="form-group">
+        <label>Tên Nhóm / Lớp Phụ Trách</label>
+        <input type="text" id="group-name" placeholder="VD: Lớp 10A1 / Phòng Khách Hàng">
+      </div>
+      <div class="form-group">
+        <label>Link Google Sheet Riêng (Tùy chọn)</label>
+        <input type="url" id="sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
+      </div>
+
+      <button id="btn-register-leader" class="btn primary">Gửi Yêu Cầu Đăng Ký</button>
+      <div style="margin-top: 15px; text-align: center;">
+        <a href="leader.html" style="color: var(--primary); text-decoration: none;">Đã có tài khoản? Đến trang Tạo Phiên →</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/leader-auth.js"></script>
+</body>
+</html>
