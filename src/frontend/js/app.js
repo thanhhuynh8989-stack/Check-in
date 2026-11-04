@@ -218,43 +218,71 @@ function renderHistory() {
 
 // Helper: Leader Start Session
 async function handleLeaderStartSession() {
-  const email = document.getElementById("leader-email").value.trim();
-  const groupId = document.getElementById("group-id").value.trim().toUpperCase();
-  const radius = document.getElementById("gps-radius").value;
-  const customSheetUrl = document.getElementById("custom-sheet-url").value.trim();
+  const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
+  const groupId = document.getElementById("group-id")?.value.trim().toUpperCase();
+  const radius = document.getElementById("gps-radius")?.value;
+  const deadlineMinutes = document.getElementById("deadline-min")?.value || 15;
+  const maxLateMinutes = document.getElementById("max-late-min")?.value || 30;
+  const customSheetUrl = document.getElementById("custom-sheet-url")?.value.trim();
 
-  if (!email || !groupId) {
-    alert("Vui lòng nhập Email và Mã Nhóm!");
+  if (!leaderEmail) {
+    alert("Vui lòng đăng nhập tài khoản Leader trước!");
+    return;
+  }
+
+  if (!groupId) {
+    alert("Vui lòng nhập Mã Nhóm / Lớp!");
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    alert("Trình duyệt không hỗ trợ GPS!");
     return;
   }
 
   navigator.geolocation.getCurrentPosition(async (pos) => {
     try {
-      const res = await fetch(WEB_APP_URL, {
+      const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+
+      const res = await fetch(apiUrl, {
         method: "POST",
         body: JSON.stringify({
           action: "startSession",
-          email: email,
+          email: leaderEmail, // Tự động lấy Email đã đăng nhập
           groupId: groupId,
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           radius: radius,
+          deadlineMinutes: deadlineMinutes,
+          maxLateMinutes: maxLateMinutes,
           customSheetUrl: customSheetUrl
         })
       });
       const data = await res.json();
       if (data.success) {
         alert("Khởi tạo phiên thành công!");
-        document.getElementById("session-form-card").classList.add("hidden");
-        document.getElementById("qr-display-card").classList.remove("hidden");
+        document.getElementById("session-form-card")?.classList.add("hidden");
+        document.getElementById("qr-display-card")?.classList.remove("hidden");
         document.getElementById("qr-text-code").textContent = data.qrCode;
+        
+        // Tạo Mã QR xoay vòng 30s
+        if (typeof QRCode !== "undefined") {
+          document.getElementById("qrcode-box").innerHTML = "";
+          new QRCode(document.getElementById("qrcode-box"), {
+            text: data.qrCode,
+            width: 200,
+            height: 200
+          });
+        }
       } else {
-        alert("Lỗi: " + data.error);
+        alert("Lỗi khởi tạo phiên: " + data.error);
       }
     } catch (err) {
-      alert("Lỗi hệ thống: " + err.toString());
+      alert("Lỗi kết nối máy chủ: " + err.toString());
     }
-  });
+  }, (err) => {
+    alert("Vui lòng cấp quyền GPS để làm mốc bán kính điểm danh!");
+  }, { enableHighAccuracy: true });
 }
 
 function showLoading(show) {
