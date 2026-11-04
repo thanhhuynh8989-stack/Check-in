@@ -38,8 +38,8 @@
 
     <!-- GIAO DIỆN CHÍNH LEADER (Hiện sau khi đã đăng nhập thành công) -->
     <main id="leader-dashboard-content" class="hidden">
-      <!-- Nav 3 Tab -->
-      <nav class="tab-bar">
+      <!-- Nav 3 Tab (Mobile Responsive) -->
+      <nav class="tab-bar" style="overflow-x: auto; white-space: nowrap;">
         <button class="tab-btn active" data-tab="tab-session">🚀 Điểm Danh</button>
         <button class="tab-btn" data-tab="tab-groups">👥 Quản Lý Nhóm</button>
         <button class="tab-btn" data-tab="tab-upload">📥 Nhập/Xuất Data</button>
@@ -49,7 +49,6 @@
       <section id="tab-session" class="tab-content active">
         <div id="session-form-card" class="card">
           <h2>Khởi Tạo Phiên Mới</h2>
-          <!-- Đã bỏ/ẩn hoàn toàn ô nhập Email thủ công -->
           <div class="form-group">
             <label>Mã Nhóm / Lớp</label>
             <input type="text" id="group-id" placeholder="VD: LOP_10A1" style="text-transform: uppercase;">
@@ -131,7 +130,7 @@
 
         <!-- Kết Quả Sinh Mã -->
         <div id="upload-result-card" class="card hidden">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <h3>3. Kết Quả Kích Hoạt</h3>
             <button id="btn-export-result-excel" class="btn primary" style="width: auto; padding: 6px 12px;">📥 Xuất File Mã Kích Hoạt (.xlsx)</button>
           </div>
