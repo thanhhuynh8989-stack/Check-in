@@ -7,6 +7,7 @@ let checkinHistory = JSON.parse(localStorage.getItem("CHECKIN_HISTORY") || "[]")
 let videoStream = null;
 let scanning = false;
 let currentSessionId = null;
+let currentRawQR = null;
 let qrTimerInterval = null;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -167,7 +168,6 @@ function submitCheckinRequest(rawQrCode) {
   const status = document.getElementById("scan-status");
   if (status) status.textContent = "Đang lấy vị trí GPS...";
 
-  // Tách sessionId trực tiếp nếu mã QR gửi lên dạng SESSION_ID|QR_CODE
   let targetSessionId = localStorage.getItem("CURRENT_SESSION_ID") || "SESS_ACTIVE";
   let payloadCode = rawQrCode;
 
@@ -258,9 +258,8 @@ async function handleLeaderStartSession() {
   const address = document.getElementById("leader-address")?.value.trim();
 
   if (!leaderEmail) return alert("Vui lòng đăng nhập tài khoản Leader!");
-  if (!groupId) return alert("Vui lòng nhập Mã Nhóm / Lớp!");
+  if (!groupId) return alert("Vui lòng chọn hoặc nhập Mã Nhóm / Lớp!");
 
-  // TH 1: Leader chọn nhập địa chỉ thủ công (Không cần cấp quyền GPS)
   if (locationType === "address") {
     if (!address) return alert("Vui lòng nhập địa chỉ mốc điểm danh!");
     sendStartSessionRequest({
@@ -275,7 +274,6 @@ async function handleLeaderStartSession() {
     return;
   }
 
-  // TH 2: Leader chọn dùng GPS thiết bị hiện tại
   if (!navigator.geolocation) return alert("Trình duyệt không hỗ trợ định vị GPS!");
 
   navigator.geolocation.getCurrentPosition((pos) => {
@@ -308,27 +306,18 @@ async function sendStartSessionRequest(payload) {
 
     if (data.success) {
       currentSessionId = data.sessionId;
+      localStorage.setItem("CURRENT_SESSION_ID", currentSessionId);
+
+      // Tách mã 8 ký tự từ chuỗi trả về dạng SESS_xxx|X7K2M9P4
+      const fullQR = data.qrCode;
+      currentRawQR = fullQR.includes("|") ? fullQR.split("|")[1] : fullQR;
+
       alert("Khởi tạo phiên thành công!");
 
       document.getElementById("session-form-card")?.classList.add("hidden");
       document.getElementById("qr-display-card")?.classList.remove("hidden");
 
-      const qrPayload = data.qrCode; // SESS_xxx|X7K2M9P4
-      const rawCode = qrPayload.includes("|") ? qrPayload.split("|")[1] : qrPayload;
-
-      // Mã nhập tay: CHỈ HIỂN THỊ 8 KÝ TỰ TOTP GỌN GÀNG
-      const textCodeElem = document.getElementById("qr-text-code");
-      if (textCodeElem) textCodeElem.textContent = rawCode;
-
-      // Mã QR Code: Nén đầy đủ chuỗi để Camera Member quét 1-click
-      if (typeof QRCode !== "undefined") {
-        document.getElementById("qrcode-box").innerHTML = "";
-        new QRCode(document.getElementById("qrcode-box"), {
-          text: qrPayload,
-          width: 220,
-          height: 220
-        });
-      }
+      renderQRAndText(currentSessionId, currentRawQR);
       startQRCountdown();
     } else {
       alert("Lỗi tạo phiên: " + data.error);
@@ -338,7 +327,25 @@ async function sendStartSessionRequest(payload) {
   }
 }
 
-// 5. Leader Đóng Phiên Thủ Công
+// 5. Render Ảnh QR & Mã Chữ Nhập Tay Chuẩn Đồng Bộ Với Backend
+function renderQRAndText(sessionId, rawQR) {
+  const textCodeElem = document.getElementById("qr-text-code");
+  if (textCodeElem) textCodeElem.textContent = rawQR;
+
+  const fullQRPayload = `${sessionId}|${rawQR}`;
+  const qrContainer = document.getElementById("qrcode-box");
+  if (qrContainer && typeof QRCode !== "undefined") {
+    qrContainer.innerHTML = "";
+    new QRCode(qrContainer, {
+      text: fullQRPayload,
+      width: 220,
+      height: 220,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+}
+
+// 6. Leader Đóng Phiên Thủ Công
 async function handleCloseSession() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   if (!currentSessionId) return alert("Không tìm thấy thông tin phiên hiện tại!");
@@ -375,20 +382,24 @@ async function handleCloseSession() {
   }
 }
 
-// Bộ đếm ngược xoay vòng 30 giây
+// 7. Bộ Đếm Ngược 30 Giây Thời Gian Thực
 function startQRCountdown() {
-  let seconds = 30;
   if (qrTimerInterval) clearInterval(qrTimerInterval);
 
-  qrTimerInterval = setInterval(() => {
-    seconds--;
-    const countdownElem = document.getElementById("qr-countdown");
-    if (countdownElem) countdownElem.textContent = seconds;
+  function syncTimer() {
+    const nowSeconds = Math.floor(new Date().getTime() / 1000);
+    const secondsRemaining = 30 - (nowSeconds % 30);
 
-    if (seconds <= 0) {
-      seconds = 30;
+    const countdownElem = document.getElementById("qr-countdown");
+    if (countdownElem) countdownElem.textContent = secondsRemaining;
+
+    if (secondsRemaining === 30 && currentSessionId && currentRawQR) {
+      renderQRAndText(currentSessionId, currentRawQR);
     }
-  }, 1000);
+  }
+
+  syncTimer();
+  qrTimerInterval = setInterval(syncTimer, 1000);
 }
 
 function showLoading(show) {
