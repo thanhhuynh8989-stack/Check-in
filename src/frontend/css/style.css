@@ -51,3 +51,9 @@ body { background-color: var(--bg-color); color: var(--text-main); display: flex
 .qr-timer-box { font-size: 0.9rem; color: var(--text-sub); margin-top: 4px; }
 
 .hidden { display: none !important; }
+
+/* Styling Bảng Dữ Liệu */
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 8px; }
+.data-table th, .data-table td { border: 1px solid #dadce0; padding: 8px 10px; text-align: left; }
+.data-table th { background-color: #f1f3f4; font-weight: 600; color: var(--text-sub); }
+.data-table tr:nth-child(even) { background-color: #f8f9fa; }
