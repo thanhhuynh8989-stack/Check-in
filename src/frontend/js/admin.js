@@ -3,7 +3,6 @@ document.addEventListener("DOMContentLoaded", () => {
   setupAdminEvents();
 });
 
-// Kiểm tra trạng thái Đăng nhập Admin
 function checkAdminAuth() {
   const currentAdmin = localStorage.getItem("CHECKIN_ADMIN_SESSION");
   const loginCard = document.getElementById("admin-login-card");
@@ -14,6 +13,7 @@ function checkAdminAuth() {
     loginCard?.classList.add("hidden");
     dashboardContent?.classList.remove("hidden");
     logoutBtn?.classList.remove("hidden");
+    loadLeadersList(); // Tự động nạp danh sách Leader sau khi đăng nhập
   } else {
     loginCard?.classList.remove("hidden");
     dashboardContent?.classList.add("hidden");
@@ -22,101 +22,117 @@ function checkAdminAuth() {
 }
 
 function setupAdminEvents() {
-  // 1. Đăng nhập Admin
-  document.getElementById("btn-admin-login")?.addEventListener("click", async () => {
-    const email = document.getElementById("admin-login-email").value.trim();
-    const password = document.getElementById("admin-login-pass").value.trim();
-
-    if (!email || !password) {
-      alert("Vui lòng nhập đầy đủ Email và Mật khẩu!");
-      return;
-    }
-
-    try {
-      const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
-
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "adminLogin",
-          email: email,
-          password: password
-        })
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        localStorage.setItem("CHECKIN_ADMIN_SESSION", data.email);
-        alert(data.message);
-        checkAdminAuth();
-      } else {
-        alert("Lỗi đăng nhập: " + data.error);
-      }
-    } catch (err) {
-      alert("Không thể kết nối máy chủ: " + err.toString());
-    }
+  // Tab Switcher
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.add("hidden"));
+      e.target.classList.add("active");
+      document.getElementById(e.target.dataset.tab)?.classList.remove("hidden");
+    });
   });
 
-  // 2. Đăng xuất Admin
+  // Login & Logout
+  document.getElementById("btn-admin-login")?.addEventListener("click", handleAdminLogin);
   document.getElementById("btn-admin-logout")?.addEventListener("click", () => {
     localStorage.removeItem("CHECKIN_ADMIN_SESSION");
     checkAdminAuth();
   });
 
-  // 3. Duyệt Tài Khoản Leader
-  document.getElementById("btn-approve-leader")?.addEventListener("click", async () => {
-    const adminEmail = localStorage.getItem("CHECKIN_ADMIN_SESSION");
-    const targetEmail = document.getElementById("approve-email").value.trim();
+  document.getElementById("btn-refresh-leaders")?.addEventListener("click", loadLeadersList);
+  document.getElementById("btn-reset-device")?.addEventListener("click", handleResetDevice);
+}
 
-    if (!targetEmail) return alert("Vui lòng nhập Email Leader cần duyệt!");
+// 1. Tải danh sách Leader từ Backend
+async function loadLeadersList() {
+  const adminEmail = localStorage.getItem("CHECKIN_ADMIN_SESSION");
+  const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
 
-    try {
-      const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
-
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "approveLeader",
-          adminEmail: adminEmail,
-          targetEmail: targetEmail
-        })
-      });
-      const data = await res.json();
-      alert(data.success ? data.message : "Lỗi duyệt: " + data.error);
-    } catch (err) {
-      alert("Lỗi kết nối: " + err.toString());
+  try {
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      body: JSON.stringify({ action: "getLeadersList", adminEmail: adminEmail })
+    });
+    const data = await res.json();
+    if (data.success) {
+      renderPendingList(data.pending);
+      renderActiveList(data.active);
+    } else {
+      alert("Không thể tải danh sách: " + data.error);
     }
-  });
+  } catch (err) {
+    console.error(err);
+  }
+}
 
-  // 4. Reset Thiết Bị
-  document.getElementById("btn-reset-device")?.addEventListener("click", async () => {
-    const adminEmail = localStorage.getItem("CHECKIN_ADMIN_SESSION");
-    const userId = document.getElementById("reset-user-id").value.trim().toUpperCase();
+// 2. Render Danh sách Chờ Duyệt (Pending Cards)
+function renderPendingList(list) {
+  const container = document.getElementById("pending-list-container");
+  if (!container) return;
 
-    if (!userId) return alert("Vui lòng nhập Mã người dùng!");
+  if (!list || list.length === 0) {
+    container.innerHTML = '<p class="sub-text" style="color: var(--success); font-weight: bold;">🎉 Không có yêu cầu nào đang chờ duyệt.</p>';
+    return;
+  }
 
-    try {
-      const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+  container.innerHTML = list.map(item => `
+    <div style="background: #fff8e1; border: 1px solid #ffe082; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+      <div>
+        <strong>${item.fullName}</strong> (${item.email})<br>
+        <small style="color: #666;">Ngày đăng ký: ${item.createdAt}</small>
+      </div>
+      <div style="display: flex; gap: 6px;">
+        <button onclick="processAction('${item.email}', 'APPROVE')" class="btn primary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">✅ Duyệt</button>
+        <button onclick="processAction('${item.email}', 'REJECT')" class="btn danger" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">❌ Từ Chối</button>
+      </div>
+    </div>
+  `).join("");
+}
 
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "resetDevice",
-          email: adminEmail,
-          userId: userId
-        })
-      });
-      const data = await res.json();
+// 3. Render Danh sách Leader Đã Duyệt
+function renderActiveList(list) {
+  const container = document.getElementById("active-list-container");
+  if (!container) return;
 
-      if (data.success) {
-        document.getElementById("reset-result").classList.remove("hidden");
-        document.getElementById("new-activation-code").textContent = data.newActivationCode;
-        alert(data.message);
-      } else {
-        alert("Lỗi reset: " + data.error);
-      }
-    } catch (err) {
-      alert("Lỗi kết nối: " + err.toString());
-    }
-  });
+  if (!list || list.length === 0) {
+    container.innerHTML = '<p class="sub-text">Chưa có Leader nào được duyệt.</p>';
+    return;
+  }
+
+  container.innerHTML = `
+    <ul style="list-style: none; padding: 0;">
+      ${list.map(item => `
+        <li style="padding: 10px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong>${item.fullName}</strong><br>
+            <small style="color: #666;">${item.email}</small>
+          </div>
+          <span class="badge" style="background: #e6f4ea; color: #137333; font-size: 0.75rem;">Đang hoạt động</span>
+        </li>
+      `).join("")}
+    </ul>
+  `;
+}
+
+// 4. Hàm xử lý Duyệt / Từ Chối 1-Click
+async function processAction(targetEmail, actionType) {
+  const adminEmail = localStorage.getItem("CHECKIN_ADMIN_SESSION");
+  const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+
+  try {
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "processLeaderAction",
+        adminEmail: adminEmail,
+        targetEmail: targetEmail,
+        actionType: actionType
+      })
+    });
+    const data = await res.json();
+    alert(data.message);
+    loadLeadersList(); // Tải lại danh sách sau khi bấm nút
+  } catch (err) {
+    alert("Lỗi thao tác: " + err.toString());
+  }
 }
