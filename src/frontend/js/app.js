@@ -8,6 +8,9 @@ let videoStream = null;
 let scanning = false;
 
 document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("btn-start-session")?.addEventListener("click", handleLeaderStartSession);
+  document.getElementById("btn-close-session")?.addEventListener("click", handleCloseSession);
+
   initApp();
   setupEventListeners();
 });
@@ -216,7 +219,10 @@ function renderHistory() {
   `).join("");
 }
 
-// Helper: Leader Start Session
+let currentSessionId = null;
+let qrTimerInterval = null;
+
+// Hàm Bắt đầu phiên điểm danh
 async function handleLeaderStartSession() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   const groupId = document.getElementById("group-id")?.value.trim().toUpperCase();
@@ -225,20 +231,10 @@ async function handleLeaderStartSession() {
   const maxLateMinutes = document.getElementById("max-late-min")?.value || 30;
   const customSheetUrl = document.getElementById("custom-sheet-url")?.value.trim();
 
-  if (!leaderEmail) {
-    alert("Vui lòng đăng nhập tài khoản Leader trước!");
-    return;
-  }
+  if (!leaderEmail) return alert("Vui lòng đăng nhập tài khoản Leader!");
+  if (!groupId) return alert("Vui lòng nhập Mã Nhóm / Lớp!");
 
-  if (!groupId) {
-    alert("Vui lòng nhập Mã Nhóm / Lớp!");
-    return;
-  }
-
-  if (!navigator.geolocation) {
-    alert("Trình duyệt không hỗ trợ GPS!");
-    return;
-  }
+  if (!navigator.geolocation) return alert("Trình duyệt không hỗ trợ GPS!");
 
   navigator.geolocation.getCurrentPosition(async (pos) => {
     try {
@@ -246,9 +242,11 @@ async function handleLeaderStartSession() {
 
       const res = await fetch(apiUrl, {
         method: "POST",
+        redirect: "follow",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
           action: "startSession",
-          email: leaderEmail, // Tự động lấy Email đã đăng nhập
+          email: leaderEmail,
           groupId: groupId,
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
@@ -259,30 +257,95 @@ async function handleLeaderStartSession() {
         })
       });
       const data = await res.json();
+
       if (data.success) {
+        currentSessionId = data.sessionId;
         alert("Khởi tạo phiên thành công!");
+
         document.getElementById("session-form-card")?.classList.add("hidden");
         document.getElementById("qr-display-card")?.classList.remove("hidden");
-        document.getElementById("qr-text-code").textContent = data.qrCode;
-        
-        // Tạo Mã QR xoay vòng 30s
+
+        // Tách chuỗi sessionId|TOTPCode
+        const qrPayload = data.qrCode; // Chuỗi đầy đủ SESS_xxx|X7K2M9P4
+        const rawCode = qrPayload.includes("|") ? qrPayload.split("|")[1] : qrPayload;
+
+        // Mã hiển thị nhập tay: CHỈ HIỂN THỊ 8 KÝ TỰ TOTP
+        document.getElementById("qr-text-code").textContent = rawCode;
+
+        // Mã QR Code: Nén đầy đủ chuỗi để Camera quét 1-click
         if (typeof QRCode !== "undefined") {
           document.getElementById("qrcode-box").innerHTML = "";
           new QRCode(document.getElementById("qrcode-box"), {
-            text: data.qrCode,
-            width: 200,
-            height: 200
+            text: qrPayload,
+            width: 220,
+            height: 220
           });
         }
+
+        startQRCountdown();
       } else {
-        alert("Lỗi khởi tạo phiên: " + data.error);
+        alert("Lỗi tạo phiên: " + data.error);
       }
     } catch (err) {
       alert("Lỗi kết nối máy chủ: " + err.toString());
     }
   }, (err) => {
-    alert("Vui lòng cấp quyền GPS để làm mốc bán kính điểm danh!");
+    alert("Vui lòng cấp quyền GPS để định vị vị trí điểm danh!");
   }, { enableHighAccuracy: true });
+}
+
+// Hàm Xử lý Đóng Phiên Thủ Công
+async function handleCloseSession() {
+  const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
+  if (!currentSessionId) return alert("Không tìm thấy thông tin phiên hiện tại!");
+
+  if (!confirm("Bạn có chắc chắn muốn đóng phiên điểm danh này ngay lập tức?")) return;
+
+  try {
+    const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      redirect: "follow",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "closeSession",
+        email: leaderEmail,
+        sessionId: currentSessionId
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      if (qrTimerInterval) clearInterval(qrTimerInterval);
+      alert(data.message);
+
+      document.getElementById("qr-display-card")?.classList.add("hidden");
+      document.getElementById("session-form-card")?.classList.remove("hidden");
+      currentSessionId = null;
+    } else {
+      alert("Lỗi đóng phiên: " + data.error);
+    }
+  } catch (err) {
+    alert("Lỗi kết nối: " + err.toString());
+  }
+}
+
+// Hàm Xoay vòng bộ đếm 30s
+function startQRCountdown() {
+  let seconds = 30;
+  if (qrTimerInterval) clearInterval(qrTimerInterval);
+
+  qrTimerInterval = setInterval(() => {
+    seconds--;
+    const countdownElem = document.getElementById("qr-countdown");
+    if (countdownElem) countdownElem.textContent = seconds;
+
+    if (seconds <= 0) {
+      seconds = 30;
+      // Tự xoay mã mới (Client-side sync)
+    }
+  }, 1000);
 }
 
 function showLoading(show) {
