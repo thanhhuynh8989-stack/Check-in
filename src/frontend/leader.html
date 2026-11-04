@@ -173,6 +173,23 @@
           </div>
         </div>
       </section>
+
+      <!-- Thêm Khung Reset Thiết Bị vào cuối Tab tab-groups trong leader.html -->
+      <div class="card" style="margin-top: 15px; border-top: 3px solid var(--danger);">
+        <h3>🔄 Reset Thiết Bị (Thành Viên Đổi Máy)</h3>
+        <p class="sub-text">Cấp lại Mã Kích Hoạt 8 ký tự mới cho thành viên trong nhóm.</p>
+        <div class="form-group">
+          <label>Mã Thành Viên (Mã NV/HS)</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="leader-reset-user-id" placeholder="VD: NV001" style="text-transform: uppercase;">
+            <button id="btn-leader-reset-device" class="btn danger" style="width: auto; white-space: nowrap;">Reset Máy</button>
+          </div>
+        </div>
+        <div id="leader-reset-result" class="ticket-box hidden" style="margin-top: 10px; text-align: center;">
+          <span>Mã Kích Hoạt Mới:</span>
+          <h2 id="leader-new-code" style="color: var(--primary); margin: 5px 0;">--------</h2>
+        </div>
+      </div>
     </main>
 
     <footer style="margin-top: 20px; padding-top: 10px; text-align: center; border-top: 1px dashed #ccc;">
