@@ -1,22 +1,20 @@
-// CONFIG: Dán Web App URL thu được từ Google Apps Script Deploy vào đây
+// CONFIG: Web App URL triển khai trên Apps Script
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxhqmMvaMageZgpfCRrjdkPPMJtUWsIU1nkfWYL5J6sSQHpIrdVF1yUgtSKNenb6p7_yQ/exec";
 
-// Application State
+// State ứng dụng
 let currentUser = JSON.parse(localStorage.getItem("CHECKIN_USER") || "null");
 let checkinHistory = JSON.parse(localStorage.getItem("CHECKIN_HISTORY") || "[]");
 let videoStream = null;
 let scanning = false;
+let currentSessionId = null;
+let qrTimerInterval = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("btn-start-session")?.addEventListener("click", handleLeaderStartSession);
-  document.getElementById("btn-close-session")?.addEventListener("click", handleCloseSession);
-
   initApp();
   setupEventListeners();
 });
 
 function initApp() {
-  // Kiểm tra trạng thái Kích hoạt thiết bị
   if (!currentUser || !currentUser.token) {
     document.getElementById("activation-section")?.classList.remove("hidden");
     document.getElementById("checkin-tab")?.classList.add("hidden");
@@ -34,7 +32,7 @@ function initApp() {
 }
 
 function setupEventListeners() {
-  // Tab Switcher
+  // Navigation Tabs Switcher
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -44,20 +42,34 @@ function setupEventListeners() {
     });
   });
 
-  // Kích Hoạt Thiết Bị
+  // Kích Hoạt Thiết Bị Member
   document.getElementById("btn-register")?.addEventListener("click", handleRegister);
 
-  // Gửi Mã QR Nhập Tay
+  // Gửi Mã QR Nhập Tay Member
   document.getElementById("btn-submit-manual")?.addEventListener("click", () => {
     const code = document.getElementById("manual-qr-code").value.trim();
     if (code) submitCheckinRequest(code);
   });
 
-  // Leader: Start Session
+  // Leader: Sự kiện Tạo Phiên & Đóng Phiên
   document.getElementById("btn-start-session")?.addEventListener("click", handleLeaderStartSession);
+  document.getElementById("btn-close-session")?.addEventListener("click", handleCloseSession);
 }
 
-// 1. Xử Lý Đăng Ký Thiết Bị (Activation)
+// Chuyển đổi ẩn/hiện ô nhập địa chỉ thủ công trên UI Leader
+function toggleLocationInput() {
+  const type = document.querySelector('input[name="location-type"]:checked')?.value;
+  const addressBox = document.getElementById("address-input-box");
+  if (!addressBox) return;
+
+  if (type === "address") {
+    addressBox.classList.remove("hidden");
+  } else {
+    addressBox.classList.add("hidden");
+  }
+}
+
+// 1. Kích Hoạt Thiết Bị
 async function handleRegister() {
   const userId = document.getElementById("reg-user-id").value.trim().toUpperCase();
   const activationCode = document.getElementById("reg-code").value.trim().toUpperCase();
@@ -100,7 +112,7 @@ async function handleRegister() {
   }
 }
 
-// 2. Tự Động Quét Mã QR Bằng Camera
+// 2. Camera QR Reader
 function startCamera() {
   const video = document.getElementById("video");
   if (!video) return;
@@ -115,7 +127,8 @@ function startCamera() {
       requestAnimationFrame(tickScan);
     })
     .catch(err => {
-      document.getElementById("scan-status").textContent = "Không thể mở Camera. Vui lòng nhập mã thủ công!";
+      const status = document.getElementById("scan-status");
+      if (status) status.textContent = "Không thể mở Camera. Vui lòng nhập mã thủ công!";
     });
 }
 
@@ -132,26 +145,37 @@ function tickScan() {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const code = jsQR(imageData.data, imageData.width, imageData.height);
+  const code = typeof jsQR !== "undefined" ? jsQR(imageData.data, imageData.width, imageData.height) : null;
 
   if (code && code.data) {
-    scanning = false; // Tạm dừng quét khi thấy mã
+    scanning = false;
     submitCheckinRequest(code.data);
   } else {
     requestAnimationFrame(tickScan);
   }
 }
 
-// 3. Gửi Yêu Cầu Điểm Danh Đính Kèm GPS
-function submitCheckinRequest(qrCode) {
+// 3. Member Bắt Buộc Gửi GPS & Quét QR Điểm Danh
+function submitCheckinRequest(rawQrCode) {
   if (!navigator.geolocation) {
-    alert("Thiết bị không hỗ trợ GPS!");
+    alert("Thiết bị của bạn không hỗ trợ GPS!");
     scanning = true;
     requestAnimationFrame(tickScan);
     return;
   }
 
-  document.getElementById("scan-status").textContent = "Đang lấy vị trí GPS...";
+  const status = document.getElementById("scan-status");
+  if (status) status.textContent = "Đang lấy vị trí GPS...";
+
+  // Tách sessionId trực tiếp nếu mã QR gửi lên dạng SESSION_ID|QR_CODE
+  let targetSessionId = localStorage.getItem("CURRENT_SESSION_ID") || "SESS_ACTIVE";
+  let payloadCode = rawQrCode;
+
+  if (rawQrCode.includes("|")) {
+    const parts = rawQrCode.split("|");
+    targetSessionId = parts[0].trim();
+    payloadCode = parts[1].trim();
+  }
 
   navigator.geolocation.getCurrentPosition(async (pos) => {
     showLoading(true);
@@ -161,8 +185,8 @@ function submitCheckinRequest(qrCode) {
         body: JSON.stringify({
           action: "submitCheckin",
           token: currentUser.token,
-          sessionId: localStorage.getItem("CURRENT_SESSION_ID") || "SESS_ACTIVE",
-          qrCode: qrCode,
+          sessionId: targetSessionId,
+          qrCode: payloadCode,
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy
@@ -185,17 +209,19 @@ function submitCheckinRequest(qrCode) {
       showLoading(false);
     }
   }, (err) => {
-    alert("Không thể lấy vị trí GPS. Bạn cần bật quyền GPS để điểm danh!");
+    alert("Vui lòng cấp quyền GPS để hệ thống tính khoảng cách điểm danh!");
     scanning = true;
     requestAnimationFrame(tickScan);
   }, { enableHighAccuracy: true, timeout: 10000 });
 }
 
 function showResultCard(data) {
-  document.getElementById("result-card").classList.remove("hidden");
-  document.getElementById("result-ticket-id").textContent = data.ticketId;
-  document.getElementById("result-detail").textContent = 
-    `Thời điểm: ${data.timestamp} | Trễ: ${data.lateMinutes} phút | Khoảng cách: ${data.distance}m`;
+  document.getElementById("result-card")?.classList.remove("hidden");
+  const ticketElem = document.getElementById("result-ticket-id");
+  const detailElem = document.getElementById("result-detail");
+
+  if (ticketElem) ticketElem.textContent = data.ticketId;
+  if (detailElem) detailElem.textContent = `Thời điểm: ${data.timestamp} | Trễ: ${data.lateMinutes} phút | Khoảng cách: ${data.distance}m`;
 }
 
 function saveHistory(item) {
@@ -219,10 +245,7 @@ function renderHistory() {
   `).join("");
 }
 
-let currentSessionId = null;
-let qrTimerInterval = null;
-
-// Hàm Bắt đầu phiên điểm danh
+// 4. Leader Khởi Tạo Phiên (Hỗ trợ cả GPS & Nhập Địa Chỉ Thủ Công)
 async function handleLeaderStartSession() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   const groupId = document.getElementById("group-id")?.value.trim().toUpperCase();
@@ -231,70 +254,91 @@ async function handleLeaderStartSession() {
   const maxLateMinutes = document.getElementById("max-late-min")?.value || 30;
   const customSheetUrl = document.getElementById("custom-sheet-url")?.value.trim();
 
+  const locationType = document.querySelector('input[name="location-type"]:checked')?.value;
+  const address = document.getElementById("leader-address")?.value.trim();
+
   if (!leaderEmail) return alert("Vui lòng đăng nhập tài khoản Leader!");
   if (!groupId) return alert("Vui lòng nhập Mã Nhóm / Lớp!");
 
-  if (!navigator.geolocation) return alert("Trình duyệt không hỗ trợ GPS!");
+  // TH 1: Leader chọn nhập địa chỉ thủ công (Không cần cấp quyền GPS)
+  if (locationType === "address") {
+    if (!address) return alert("Vui lòng nhập địa chỉ mốc điểm danh!");
+    sendStartSessionRequest({
+      email: leaderEmail,
+      groupId: groupId,
+      address: address,
+      radius: radius,
+      deadlineMinutes: deadlineMinutes,
+      maxLateMinutes: maxLateMinutes,
+      customSheetUrl: customSheetUrl
+    });
+    return;
+  }
 
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    try {
-      const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+  // TH 2: Leader chọn dùng GPS thiết bị hiện tại
+  if (!navigator.geolocation) return alert("Trình duyệt không hỗ trợ định vị GPS!");
 
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        redirect: "follow",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          action: "startSession",
-          email: leaderEmail,
-          groupId: groupId,
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          radius: radius,
-          deadlineMinutes: deadlineMinutes,
-          maxLateMinutes: maxLateMinutes,
-          customSheetUrl: customSheetUrl
-        })
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        currentSessionId = data.sessionId;
-        alert("Khởi tạo phiên thành công!");
-
-        document.getElementById("session-form-card")?.classList.add("hidden");
-        document.getElementById("qr-display-card")?.classList.remove("hidden");
-
-        // Tách chuỗi sessionId|TOTPCode
-        const qrPayload = data.qrCode; // Chuỗi đầy đủ SESS_xxx|X7K2M9P4
-        const rawCode = qrPayload.includes("|") ? qrPayload.split("|")[1] : qrPayload;
-
-        // Mã hiển thị nhập tay: CHỈ HIỂN THỊ 8 KÝ TỰ TOTP
-        document.getElementById("qr-text-code").textContent = rawCode;
-
-        // Mã QR Code: Nén đầy đủ chuỗi để Camera quét 1-click
-        if (typeof QRCode !== "undefined") {
-          document.getElementById("qrcode-box").innerHTML = "";
-          new QRCode(document.getElementById("qrcode-box"), {
-            text: qrPayload,
-            width: 220,
-            height: 220
-          });
-        }
-
-        startQRCountdown();
-      } else {
-        alert("Lỗi tạo phiên: " + data.error);
-      }
-    } catch (err) {
-      alert("Lỗi kết nối máy chủ: " + err.toString());
-    }
+  navigator.geolocation.getCurrentPosition((pos) => {
+    sendStartSessionRequest({
+      email: leaderEmail,
+      groupId: groupId,
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      radius: radius,
+      deadlineMinutes: deadlineMinutes,
+      maxLateMinutes: maxLateMinutes,
+      customSheetUrl: customSheetUrl
+    });
   }, (err) => {
-    alert("Vui lòng cấp quyền GPS để định vị vị trí điểm danh!");
+    alert("Vui lòng cấp quyền GPS hoặc chọn tùy chọn 'Nhập địa chỉ thủ công'!");
   }, { enableHighAccuracy: true });
 }
 
-// Hàm Xử lý Đóng Phiên Thủ Công
+async function sendStartSessionRequest(payload) {
+  try {
+    const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      redirect: "follow",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "startSession", ...payload })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      currentSessionId = data.sessionId;
+      alert("Khởi tạo phiên thành công!");
+
+      document.getElementById("session-form-card")?.classList.add("hidden");
+      document.getElementById("qr-display-card")?.classList.remove("hidden");
+
+      const qrPayload = data.qrCode; // SESS_xxx|X7K2M9P4
+      const rawCode = qrPayload.includes("|") ? qrPayload.split("|")[1] : qrPayload;
+
+      // Mã nhập tay: CHỈ HIỂN THỊ 8 KÝ TỰ TOTP GỌN GÀNG
+      const textCodeElem = document.getElementById("qr-text-code");
+      if (textCodeElem) textCodeElem.textContent = rawCode;
+
+      // Mã QR Code: Nén đầy đủ chuỗi để Camera Member quét 1-click
+      if (typeof QRCode !== "undefined") {
+        document.getElementById("qrcode-box").innerHTML = "";
+        new QRCode(document.getElementById("qrcode-box"), {
+          text: qrPayload,
+          width: 220,
+          height: 220
+        });
+      }
+      startQRCountdown();
+    } else {
+      alert("Lỗi tạo phiên: " + data.error);
+    }
+  } catch (err) {
+    alert("Lỗi kết nối máy chủ: " + err.toString());
+  }
+}
+
+// 5. Leader Đóng Phiên Thủ Công
 async function handleCloseSession() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   if (!currentSessionId) return alert("Không tìm thấy thông tin phiên hiện tại!");
@@ -331,7 +375,7 @@ async function handleCloseSession() {
   }
 }
 
-// Hàm Xoay vòng bộ đếm 30s
+// Bộ đếm ngược xoay vòng 30 giây
 function startQRCountdown() {
   let seconds = 30;
   if (qrTimerInterval) clearInterval(qrTimerInterval);
@@ -343,7 +387,6 @@ function startQRCountdown() {
 
     if (seconds <= 0) {
       seconds = 30;
-      // Tự xoay mã mới (Client-side sync)
     }
   }, 1000);
 }
