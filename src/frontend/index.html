@@ -3,16 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Check-in App</title>
-  <style>
-    body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f4f6f8; }
-    .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; }
-  </style>
+  <title>Check-in Member</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
-  <div class="card">
-    <h2>🚀 Check-in PWA System</h2>
-    <p>Sẵn sàng tích hợp giao diện PWA và Google Apps Script Backend!</p>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>📋 điểm danh</h1>
+      <div id="user-badge" class="badge hidden"></div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="tab-bar">
+      <button class="tab-btn active" data-tab="checkin-tab">Điểm Danh</button>
+      <button class="tab-btn" data-tab="history-tab">Lịch Sử</button>
+    </nav>
+
+    <!-- SECTION 1: Kích Hoạt Thiết Bị (Lần Đầu) -->
+    <section id="activation-section" class="card hidden">
+      <h2>🔐 Kích Hoạt Thiết Bị</h2>
+      <p class="sub-text">Nhập mã nhân viên/học sinh và mã kích hoạt 8 ký tự được cấp.</p>
+      <div class="form-group">
+        <label>Mã Người Dùng (Mã NV/HS)</label>
+        <input type="text" id="reg-user-id" placeholder="VD: NV001" style="text-transform: uppercase;">
+      </div>
+      <div class="form-group">
+        <label>Mã Kích Hoạt (8 Ký Tự)</label>
+        <input type="text" id="reg-code" placeholder="VD: X7K2-M9P4" style="text-transform: uppercase;">
+      </div>
+      <button id="btn-register" class="btn primary">Xác Nhận Kích Hoạt</button>
+    </section>
+
+    <!-- SECTION 2: Giao Diện Điểm Danh (Main Tab) -->
+    <section id="checkin-tab" class="tab-content active">
+      <div class="card text-center">
+        <div id="scanner-wrapper">
+          <video id="video" playsinline></video>
+          <canvas id="canvas" class="hidden"></canvas>
+          <div class="scan-region-highlight"></div>
+        </div>
+        <p id="scan-status" class="status-text">Đang bật Camera quét mã QR...</p>
+        <button id="btn-toggle-camera" class="btn secondary">Tắt / Bật Camera</button>
+      </div>
+
+      <!-- Card Nhập Mã QR Thủ Công (Nếu Camera lỗi) -->
+      <div class="card">
+        <h3>Hoặc Nhập Mã QR Trực Tiếp</h3>
+        <div class="form-inline">
+          <input type="text" id="manual-qr-code" placeholder="Nhập 8 ký tự mã QR" style="text-transform: uppercase;">
+          <button id="btn-submit-manual" class="btn primary">Gửi</button>
+        </div>
+      </div>
+
+      <!-- Bảng Thông Báo Kết Quả Tức Thì -->
+      <div id="result-card" class="card result-card hidden">
+        <div class="icon-status" id="result-icon">✅</div>
+        <h2 id="result-title">Điểm Danh Thành Công</h2>
+        <div class="ticket-box">
+          <span>Mã Giao Dịch (Ticket ID):</span>
+          <strong id="result-ticket-id">CHK-20261104-1234</strong>
+        </div>
+        <p id="result-detail">Thời điểm: 10:45 | Trễ: 0 phút | Khoảng cách: 12m</p>
+        <p class="sub-text">Vui lòng chụp màn hình thẻ này để đối soát khi cần thiết.</p>
+      </div>
+    </section>
+
+    <!-- SECTION 3: Tab Lịch Sử Điểm Danh -->
+    <section id="history-tab" class="tab-content hidden">
+      <div class="card">
+        <h3>🕒 Lịch Sử Các Lượt Điểm Danh</h3>
+        <ul id="history-list" class="history-list">
+          <li class="empty-msg">Đang tải lịch sử...</li>
+        </ul>
+      </div>
+    </section>
   </div>
+
+  <script src="js/app.js"></script>
 </body>
 </html>
