@@ -383,22 +383,67 @@ async function handleCloseSession() {
 }
 
 // 7. Bộ Đếm Ngược 30 Giây Thời Gian Thực
+// 1. Tự động xin mã QR mới từ Server mỗi khi chuyển bước 30s
+async function refreshQRCodeFromServer() {
+  if (!currentSessionId) return;
+
+  try {
+    const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      redirect: "follow",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        action: "getLatestQR",
+        sessionId: currentSessionId
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      // Cập nhật Mã Chữ 8 ký tự dự phòng
+      const textCodeElem = document.getElementById("qr-text-code");
+      if (textCodeElem) textCodeElem.textContent = data.rawQR;
+
+      // Vẽ lại Ảnh Mã QR Code mới
+      const qrContainer = document.getElementById("qrcode-box");
+      if (qrContainer && typeof QRCode !== "undefined") {
+        qrContainer.innerHTML = "";
+        new QRCode(qrContainer, {
+          text: data.qrCode, // Chuỗi dạng SESSION_ID|RAW_QR
+          width: 220,
+          height: 220,
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Lỗi cập nhật mã QR:", err);
+  }
+}
+
+// 2. Bộ đếm ngược 30s thời gian thực đồng bộ tuyệt đối
 function startQRCountdown() {
   if (qrTimerInterval) clearInterval(qrTimerInterval);
 
+  let lastStep = -1;
+
   function syncTimer() {
     const nowSeconds = Math.floor(new Date().getTime() / 1000);
+    const currentStep = Math.floor(nowSeconds / 30); // Bước chu kỳ 30s
     const secondsRemaining = 30 - (nowSeconds % 30);
 
     const countdownElem = document.getElementById("qr-countdown");
     if (countdownElem) countdownElem.textContent = secondsRemaining;
 
-    if (secondsRemaining === 30 && currentSessionId && currentRawQR) {
-      renderQRAndText(currentSessionId, currentRawQR);
+    // Ngay khi bước thời gian chuyển sang chu kỳ 30s mới -> Lấy và đổi ảnh QR ngay lập tức!
+    if (currentStep !== lastStep) {
+      lastStep = currentStep;
+      refreshQRCodeFromServer();
     }
   }
 
-  syncTimer();
+  syncTimer(); // Chạy ngay lập tức khi vừa bấm Start
   qrTimerInterval = setInterval(syncTimer, 1000);
 }
 
