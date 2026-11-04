@@ -51,11 +51,14 @@
           <h2>Khởi Tạo Phiên Mới</h2>
           <div class="form-group">
             <label>Mã Nhóm / Lớp</label>
-            <input type="text" id="group-id" placeholder="VD: LOP_10A1" style="text-transform: uppercase;">
+            <select id="group-id" style="text-transform: uppercase;">
+              <option value="">-- Đang tải danh sách nhóm... --</option>
+            </select>
+            <small class="sub-text">Chỉ các nhóm bạn phụ trách mới xuất hiện ở đây.</small>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Thời Gian Bài/Đến (Phút)</label>
+              <label>Thời hạn Điểm danh</label>
               <input type="number" id="deadline-min" value="15" min="1">
             </div>
             <div class="form-group">
