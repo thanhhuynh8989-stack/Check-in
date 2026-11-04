@@ -63,6 +63,27 @@
               <input type="number" id="max-late-min" value="30" min="0">
             </div>
           </div>
+
+          <!-- Bổ sung Phương thức Xác định Vị trí -->
+          <div class="form-group">
+            <label>Phương Thức Xác Định Vị Trí Mốc</label>
+            <div style="display: flex; gap: 15px; margin-top: 6px; margin-bottom: 8px;">
+              <label style="font-weight: normal; cursor: pointer;">
+                <input type="radio" name="location-type" value="gps" checked onchange="toggleLocationInput()"> 📍 Dùng GPS hiện tại
+              </label>
+              <label style="font-weight: normal; cursor: pointer;">
+                <input type="radio" name="location-type" value="address" onchange="toggleLocationInput()"> 🗺️ Nhập địa chỉ thủ công
+              </label>
+            </div>
+          </div>
+
+          <!-- Ô nhập địa chỉ thủ công (Hiển thị khi chọn "Nhập địa chỉ thủ công") -->
+          <div id="address-input-box" class="form-group hidden">
+            <label>Địa Chỉ Mốc Điểm Danh (Tra cứu Google Maps)</label>
+            <input type="text" id="leader-address" placeholder="VD: 254 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng">
+            <small class="sub-text">Hệ thống sẽ tự động chuyển địa chỉ này thành tọa độ GPS chính xác.</small>
+          </div>
+
           <div class="form-group">
             <label>Bán Kính GPS (Mét)</label>
             <select id="gps-radius">
