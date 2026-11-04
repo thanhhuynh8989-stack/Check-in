@@ -26,17 +26,23 @@ Check-in/
 │   └── PLAN.md                 # Tài liệu kế hoạch chi tiết hệ thống
 ├── src/
 │   ├── frontend/               # Mã nguồn PWA Frontend
-│   │   ├── index.html          # Giao diện chính cho Member (Quét QR & Lịch sử)
-│   │   ├── leader.html         # Giao diện Dashboard cho Leader (Tạo phiên & Hiển thị QR)
+│   │   ├── index.html          # Giao diện chính Member (Xác thực, Quét QR & Lịch sử)
+│   │   ├── leader.html         # Dashboard Leader (Khởi tạo phiên & Hiển thị QR xoay vòng)
+│   │   ├── register-leader.html# Trang đăng ký tài khoản Leader & Khởi tạo nhóm mới
+│   │   ├── admin.html          # Dashboard Admin (Duyệt Leader & Reset thiết bị đổi máy)
 │   │   ├── css/
 │   │   │   └── style.css       # Style giao diện tối ưu di động
 │   │   └── js/
-│   │       └── app.js          # Logic xử lý PWA, Camera Scanner, GPS & API
+│   │       ├── app.js          # Logic PWA chính, QR Camera, GPS & API Connector
+│   │       ├── leader-auth.js  # Logic Đăng ký Leader & Gửi thông tin Nhóm
+│   │       └── admin.js        # Logic Duyệt tài khoản & Reset Mã kích hoạt
 │   └── backend/                # Mã nguồn Google Apps Script Backend
 │       ├── Code.gs             # Entry points: doGet(), doPost()
 │       ├── Config.gs           # Hằng số cấu hình hệ thống
-│       ├── Setup.gs            # Script tự động tạo 7 Tab Master Sheet
-│       ├── Auth.gs             # Xử lý Token HMAC & Đăng ký thiết bị
-│       ├── SessionManager.gs   # Quản lý phiên, Toán Haversine GPS & Mã QR TOTP
-│       └── SheetService.gs     # Đọc/Ghi dữ liệu Google Sheet & Self-healing Header
+│       ├── Setup.gs            # Script tự động khởi tạo 7 Tab Master Sheet
+│       ├── Auth.gs             # Xử lý Token HMAC & Đăng ký thiết bị 1-1
+│       ├── SessionManager.gs   # Quản lý phiên, Toán Haversine GPS & Mã QR TOTP 30s
+│       ├── SheetService.gs     # Đọc/Ghi dữ liệu Google Sheet & Self-healing Header
+│       ├── LeaderService.gs    # Quản lý tài khoản Leader & Nhóm
+│       └── AdminService.gs     # Phê duyệt Leader & Khôi phục thiết bị cho Member
 └── README.md                   # Tài liệu hướng dẫn thiết lập & sử dụng
