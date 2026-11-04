@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Leader Dashboard - Check-in</title>
   <link rel="stylesheet" href="css/style.css">
-  <!-- Thư viện tạo Mã QR & Xuất/Đọc File Excel -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -13,126 +12,146 @@
   <div class="app-container">
     <header class="app-header">
       <h1>👑 Leader Dashboard</h1>
-      <div id="leader-badge" class="badge">Leader</div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <span id="leader-badge" class="badge">Leader</span>
+        <button id="btn-leader-logout" class="btn secondary hidden" style="width: auto; padding: 4px 10px; font-size: 0.8rem;">Đăng xuất</button>
+      </div>
     </header>
 
-    <!-- Thanh Navigation 3 Tab Chuyên Biệt -->
-    <nav class="tab-bar">
-      <button class="tab-btn active" data-tab="tab-session">🚀 Điểm Danh</button>
-      <button class="tab-btn" data-tab="tab-groups">👥 Quản Lý Nhóm</button>
-      <button class="tab-btn" data-tab="tab-upload">📥 Nhập/Xuất Data</button>
-    </nav>
+    <!-- FORM ĐĂNG NHẬP LEADER (Hiện khi chưa đăng nhập) -->
+    <section id="leader-login-card" class="card">
+      <h2>🔐 Đăng Nhập Leader</h2>
+      <p class="sub-text">Nhập Email và Mật khẩu Leader để quản lý phiên và danh sách nhóm.</p>
+      <div class="form-group">
+        <label>Email Leader</label>
+        <input type="email" id="leader-login-email" placeholder="email@gmail.com">
+      </div>
+      <div class="form-group">
+        <label>Mật Khẩu</label>
+        <input type="password" id="leader-login-pass" placeholder="••••••••">
+      </div>
+      <button id="btn-leader-login" class="btn primary">Đăng Nhập</button>
+      <div style="margin-top: 15px; text-align: center;">
+        <a href="register-leader.html" style="color: var(--primary); font-size: 0.85rem; text-decoration: none;">Chưa có tài khoản? Đăng ký Leader ngay →</a>
+      </div>
+    </section>
 
-    <!-- TAB 1: Khởi Tạo Phiên Điểm Danh & Trình Chiếu QR -->
-    <section id="tab-session" class="tab-content active">
-      <div id="session-form-card" class="card">
-        <h2>Khởi Tạo Phiên Mới</h2>
-        <div class="form-group">
-          <label>Email Người Ra Lệnh</label>
-          <input type="email" id="leader-email" placeholder="email@gmail.com">
-        </div>
-        <div class="form-group">
-          <label>Mã Nhóm / Lớp</label>
-          <input type="text" id="group-id" placeholder="VD: LOP_10A1" style="text-transform: uppercase;">
-        </div>
-        <div class="form-row">
+    <!-- GIAO DIỆN CHÍNH LEADER (Hiện sau khi đã đăng nhập thành công) -->
+    <main id="leader-dashboard-content" class="hidden">
+      <!-- Nav 3 Tab -->
+      <nav class="tab-bar">
+        <button class="tab-btn active" data-tab="tab-session">🚀 Điểm Danh</button>
+        <button class="tab-btn" data-tab="tab-groups">👥 Quản Lý Nhóm</button>
+        <button class="tab-btn" data-tab="tab-upload">📥 Nhập/Xuất Data</button>
+      </nav>
+
+      <!-- TAB 1: KHỞI TẠO PHIÊN -->
+      <section id="tab-session" class="tab-content active">
+        <div id="session-form-card" class="card">
+          <h2>Khởi Tạo Phiên Mới</h2>
+          <!-- Đã bỏ/ẩn hoàn toàn ô nhập Email thủ công -->
           <div class="form-group">
-            <label>Thời Gian Bài/Đến (Phút)</label>
-            <input type="number" id="deadline-min" value="15" min="1">
+            <label>Mã Nhóm / Lớp</label>
+            <input type="text" id="group-id" placeholder="VD: LOP_10A1" style="text-transform: uppercase;">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Thời Gian Bài/Đến (Phút)</label>
+              <input type="number" id="deadline-min" value="15" min="1">
+            </div>
+            <div class="form-group">
+              <label>Trễ Tối Đa (Phút)</label>
+              <input type="number" id="max-late-min" value="30" min="0">
+            </div>
           </div>
           <div class="form-group">
-            <label>Trễ Tối Đa (Phút)</label>
-            <input type="number" id="max-late-min" value="30" min="0">
+            <label>Bán Kính GPS (Mét)</label>
+            <select id="gps-radius">
+              <option value="20">20 mét (Trong phòng)</option>
+              <option value="50" selected>50 mét (Mặc định)</option>
+              <option value="100">100 mét (Hội trường lớn)</option>
+              <option value="200">200 mét (Khuôn viên)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Link Google Sheet Riêng (Tùy Chọn)</label>
+            <input type="url" id="custom-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
+          </div>
+          <button id="btn-start-session" class="btn primary">🚀 Bắt Đầu Điểm Danh</button>
+        </div>
+
+        <!-- Khung Hiển Thị Mã QR Code Xoay Vòng -->
+        <div id="qr-display-card" class="card text-center hidden">
+          <h2>Mã QR Điểm Danh</h2>
+          <p id="session-info-text">Đang phát dữ liệu phiên...</p>
+          <div id="qrcode-box" class="qrcode-container"></div>
+          <div class="qr-timer-box">
+            <span>Tự động xoay mã sau: <strong id="qr-countdown">30</strong>s</span>
+          </div>
+          <div class="form-group" style="margin-top: 1rem;">
+            <label>Mã Nhập Tay Dự Phòng:</label>
+            <h1 id="qr-text-code" class="text-highlight">--------</h1>
+          </div>
+          <button id="btn-close-session" class="btn danger">🛑 Đóng Phiên Thủ Công</button>
+        </div>
+      </section>
+
+      <!-- TAB 2: QUẢN LÝ NHÓM -->
+      <section id="tab-groups" class="tab-content hidden">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3>Danh Sách Nhóm Phụ Trách</h3>
+            <button id="btn-refresh-groups" class="btn secondary" style="width: auto; padding: 6px 12px;">🔄 Tải lại</button>
+          </div>
+          <div id="groups-grid-container" class="groups-grid">
+            <p class="sub-text">Đang tải danh sách nhóm...</p>
           </div>
         </div>
-        <div class="form-group">
-          <label>Bán Kính GPS (Mét)</label>
-          <select id="gps-radius">
-            <option value="20">20 mét (Trong phòng)</option>
-            <option value="50" selected>50 mét (Mặc định)</option>
-            <option value="100">100 mét (Hội trường lớn)</option>
-            <option value="200">200 mét (Khuôn viên)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Link Google Sheet Riêng (Tùy Chọn)</label>
-          <input type="url" id="custom-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
-        </div>
-        <button id="btn-start-session" class="btn primary">🚀 Bắt Đầu Điểm Danh</button>
-      </div>
+      </section>
 
-      <!-- Khung Hiển Thị Mã QR Xoay Vòng -->
-      <div id="qr-display-card" class="card text-center hidden">
-        <h2>Mã QR Điểm Danh</h2>
-        <p id="session-info-text">Đang phát dữ liệu phiên...</p>
-        <div id="qrcode-box" class="qrcode-container"></div>
-        <div class="qr-timer-box">
-          <span>Tự động xoay mã sau: <strong id="qr-countdown">30</strong>s</span>
+      <!-- TAB 3: UPLOAD DATA -->
+      <section id="tab-upload" class="tab-content hidden">
+        <div class="card">
+          <h3>1. File Excel Mẫu</h3>
+          <p class="sub-text">Tải file mẫu chuẩn bao gồm các cột: <strong>MãNgười, HọTên, MãNhóm, GhiChú</strong>.</p>
+          <button id="btn-download-template" class="btn secondary">📄 Tải File Excel Mẫu (.xlsx)</button>
         </div>
-        <div class="form-group" style="margin-top: 1rem;">
-          <label>Mã Nhập Tay Dự Phòng:</label>
-          <h1 id="qr-text-code" class="text-highlight">--------</h1>
-        </div>
-        <button id="btn-close-session" class="btn danger">🛑 Đóng Phiên Thủ Công</button>
-      </div>
-    </section>
 
-    <!-- TAB 2: Quản Lý Nhóm & Thành Viên (Card Grid View) -->
-    <section id="tab-groups" class="tab-content hidden">
-      <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <h3>Danh Sách Nhóm Quản Lý</h3>
-          <button id="btn-refresh-groups" class="btn secondary" style="width: auto; padding: 6px 12px;">🔄 Tải lại</button>
+        <div class="card">
+          <h3>2. Upload Danh Sách Thành Viên</h3>
+          <div class="form-group">
+            <label>Chọn File Excel hoặc CSV (.xlsx, .xls, .csv)</label>
+            <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv">
+          </div>
+          <div id="file-preview-box" class="hidden">
+            <p class="sub-text">Đã đọc <strong id="preview-count">0</strong> dòng thành viên.</p>
+            <button id="btn-process-upload" class="btn primary">⬆️ Tải Lên Hệ Thống & Sinh Mã</button>
+          </div>
         </div>
-        <div id="groups-grid-container" class="groups-grid">
-          <p class="sub-text">Bấm nút "Tải lại" để lấy danh sách các Nhóm do bạn phụ trách.</p>
-        </div>
-      </div>
-    </section>
 
-    <!-- TAB 3: Nhập / Xuất Danh Sách Thành Viên (Excel Import/Export) -->
-    <section id="tab-upload" class="tab-content hidden">
-      <div class="card">
-        <h3>1. File Excel Mẫu</h3>
-        <p class="sub-text">Tải file mẫu chuẩn bao gồm các cột: <strong>MãNgười, HọTên, MãNhóm, GhiChú</strong>.</p>
-        <button id="btn-download-template" class="btn secondary">📄 Tải File Excel Mẫu (.xlsx)</button>
-      </div>
+        <!-- Kết Quả Sinh Mã -->
+        <div id="upload-result-card" class="card hidden">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>3. Kết Quả Kích Hoạt</h3>
+            <button id="btn-export-result-excel" class="btn primary" style="width: auto; padding: 6px 12px;">📥 Xuất File Mã Kích Hoạt (.xlsx)</button>
+          </div>
+          <div style="overflow-x: auto; margin-top: 10px;">
+            <table class="data-table" id="result-table">
+              <thead>
+                <tr>
+                  <th>Mã Người</th>
+                  <th>Họ Tên</th>
+                  <th>Mã Nhóm</th>
+                  <th>Mã Kích Hoạt (8 Ký Tự)</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
 
-      <div class="card">
-        <h3>2. Upload Danh Sách Thành Viên</h3>
-        <div class="form-group">
-          <label>Chọn File Excel hoặc CSV (.xlsx, .xls, .csv)</label>
-          <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv">
-        </div>
-        <div id="file-preview-box" class="hidden">
-          <p class="sub-text">Đã đọc <strong id="preview-count">0</strong> dòng thành viên.</p>
-          <button id="btn-process-upload" class="btn primary">⬆️ Tải Lên Hệ Thống & Sinh Mã</button>
-        </div>
-      </div>
-
-      <!-- Kết Quả Sinh Mã Kích Hoạt -->
-      <div id="upload-result-card" class="card hidden">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3>3. Kết Quả Kích Hoạt</h3>
-          <button id="btn-export-result-excel" class="btn primary" style="width: auto; padding: 6px 12px;">📥 Xuất File Mã Kích Hoạt (.xlsx)</button>
-        </div>
-        <div style="overflow-x: auto; margin-top: 10px;">
-          <table class="data-table" id="result-table">
-            <thead>
-              <tr>
-                <th>Mã Người</th>
-                <th>Họ Tên</th>
-                <th>Mã Nhóm</th>
-                <th>Mã Kích Hoạt (8 Ký Tự)</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- Footer Điều Hướng Nhanh -->
     <footer style="margin-top: 20px; padding-top: 10px; text-align: center; border-top: 1px dashed #ccc;">
       <a href="index.html" style="color: var(--primary); font-size: 0.85rem; text-decoration: none;">← Quay lại Trang Thành Viên</a>
     </footer>
