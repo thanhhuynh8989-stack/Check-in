@@ -10,51 +10,56 @@
 <body>
   <div class="app-container">
     
-    <!-- HEADER VỚI NÚT HAMBURGER MENU -->
+    <!-- HEADER VỚI HAMBURGER MENU -->
     <header class="app-header">
       <button id="btn-hamburger" class="hamburger-btn" aria-label="Mở Menu">
         <span></span>
         <span></span>
         <span></span>
       </button>
-      <h1>📋 Điểm danh</h1>
+      <h1>📋 điểm danh</h1>
       <div id="user-badge" class="badge hidden"></div>
     </header>
 
-    <!-- NAVIGATION DRAWER (HAMBURGER MENU SLIDE-OUT) -->
+    <!-- NAVIGATION DRAWER -->
     <div id="menu-overlay" class="menu-overlay hidden"></div>
     <aside id="nav-drawer" class="nav-drawer hidden">
       <div class="drawer-header">
-        <h3>⚡ Hệ Thống PWA</h3>
+        <h3>⚡ Navigation Menu</h3>
         <button id="btn-close-drawer" class="close-btn">&times;</button>
       </div>
       <ul class="drawer-menu">
         <li><a href="index.html" class="active">📱 Điểm Danh</a></li>
-        <li><a href="leader.html">👑 Quản lý</a></li>
-        <li><a href="register-leader.html">📝 Đăng Ký Quản lý</a></li>
-    <!--    <li><a href="admin.html">🛡️ Admin</a></li> -->
+        <li><a href="leader.html">👑 Trang Leader (Quản Lý)</a></li>
+        <li><a href="register-leader.html">📝 Đăng Ký Leader</a></li>
+  <!--       <li><a href="admin.html">🛡️ Admin (Hệ Thống)</a></li> -->
       </ul>
     </aside>
 
-    <!-- TAB SWITCHER NỘI BỘ -->
+    <!-- TAB SWITCHER -->
     <nav class="tab-bar">
       <button class="tab-btn active" data-tab="checkin-tab">Quét Mã</button>
       <button class="tab-btn" data-tab="history-tab">Lịch Sử</button>
     </nav>
 
-    <!-- SECTION 1: Kích Hoạt Thiết Bị (Lần Đầu) -->
+    <!-- SECTION 1: Xác Nhận Thiết Bị (Lần Đầu - Không Cần Mã 8 Ký Tự) -->
     <section id="activation-section" class="card hidden">
-      <h2>🔐 Kích Hoạt Thiết Bị</h2>
-      <p class="sub-text">Nhập mã nhân viên/học sinh và mã kích hoạt 8 ký tự được cấp.</p>
+      <h2>🔐 Xác Nhận Tài Khoản</h2>
+      <p class="sub-text">Nhập Mã NV/HS để liên kết máy hiện tại với hệ thống.</p>
+      
+      <!-- ICON TIPS HƯỚNG DẪN MEMBER -->
+      <div class="tip-box">
+        <span class="tip-icon">💡</span>
+        <div class="tip-content">
+          <strong>Mẹo nhỏ:</strong> Bạn chỉ cần nhập Mã NV/HS đúng 1 lần đầu. Trên iPhone (iOS), hãy chọn <em>Chia sẻ ➔ Thêm vào Màn hình chính</em> để dùng mượt mà nhất!
+        </div>
+      </div>
+
       <div class="form-group">
         <label>Mã Người Dùng (Mã NV/HS)</label>
         <input type="text" id="reg-user-id" placeholder="VD: NV001" style="text-transform: uppercase;">
       </div>
-      <div class="form-group">
-        <label>Mã Kích Hoạt (8 Ký Tự)</label>
-        <input type="text" id="reg-code" placeholder="VD: X7K2-M9P4" style="text-transform: uppercase;">
-      </div>
-      <button id="btn-register" class="btn primary">Xác Nhận Kích Hoạt</button>
+      <button id="btn-register" class="btn primary">Bắt Đầu Điểm Danh</button>
     </section>
 
     <!-- SECTION 2: Giao Diện Điểm Danh (Main Tab) -->
@@ -78,7 +83,7 @@
         </div>
       </div>
 
-      <!-- Bảng Thông Báo Kết Quả Tức Thì -->
+      <!-- Bảng Thông Báo Kết Quả -->
       <div id="result-card" class="card result-card hidden">
         <div class="icon-status" id="result-icon">✅</div>
         <h2 id="result-title">Điểm Danh Thành Công</h2>
@@ -87,11 +92,10 @@
           <strong id="result-ticket-id">CHK-20261105-1234</strong>
         </div>
         <p id="result-detail">Thời điểm: --:-- | Trễ: 0 phút | Khoảng cách: 0m</p>
-        <p class="sub-text">Vui lòng chụp màn hình thẻ này để đối soát khi cần thiết.</p>
       </div>
     </section>
 
-    <!-- SECTION 3: Tab Lịch Sử Điểm Danh -->
+    <!-- SECTION 3: Tab Lịch Sử -->
     <section id="history-tab" class="tab-content hidden">
       <div class="card">
         <h3>🕒 Lịch Sử Các Lượt Điểm Danh</h3>
