@@ -216,7 +216,7 @@ async function toggleGroupMembers(groupId) {
   }
 
   box.classList.remove("hidden");
-  box.innerHTML = '<p class="sub-text">⏳ Đang lấy danh sách từ hệ thống...</p>';
+  box.innerHTML = '<p class="sub-text">⏳ Đang tổng hợp dữ liệu thống kê từ hệ thống...</p>';
 
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
@@ -230,20 +230,47 @@ async function toggleGroupMembers(groupId) {
 
     if (data.success && data.members.length > 0) {
       box.innerHTML = `
-        <table class="data-table" style="margin: 0;">
-          <thead>
-            <tr><th>Mã NV/HS</th><th>Họ và Tên</th></tr>
-          </thead>
-          <tbody>
-            ${data.members.map(m => `<tr><td><strong>${m.userId}</strong></td><td>${m.fullName}</td></tr>`).join("")}
-          </tbody>
-        </table>
+        <div class="table-responsive" style="margin-top: 5px;">
+          <table class="data-table" style="margin: 0; font-size: 0.8rem;">
+            <thead>
+              <tr>
+                <th rowspan="2" style="vertical-align: middle;">Mã NV/HS</th>
+                <th rowspan="2" style="vertical-align: middle;">Họ và Tên</th>
+                <th colspan="2" style="text-align: center; background: #e8f0fe;">Tuần Này</th>
+                <th colspan="2" style="text-align: center; background: #e6f4ea;">Tháng Này</th>
+                <th colspan="2" style="text-align: center; background: #fef7e0;">Năm Nay</th>
+              </tr>
+              <tr>
+                <th style="color: var(--success); text-align: center;">Đúng</th>
+                <th style="color: var(--danger); text-align: center;">Trễ</th>
+                <th style="color: var(--success); text-align: center;">Đúng</th>
+                <th style="color: var(--danger); text-align: center;">Trễ</th>
+                <th style="color: var(--success); text-align: center;">Đúng</th>
+                <th style="color: var(--danger); text-align: center;">Trễ</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.members.map(m => `
+                <tr>
+                  <td><strong>${m.userId}</strong></td>
+                  <td>${m.fullName}</td>
+                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.weekOnTime}</td>
+                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.weekLate}</td>
+                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.monthOnTime}</td>
+                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.monthLate}</td>
+                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.yearOnTime}</td>
+                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.yearLate}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
       `;
     } else {
       box.innerHTML = '<p class="sub-text">Nhóm này chưa có thành viên nào.</p>';
     }
   } catch (err) {
-    box.innerHTML = '<p class="sub-text" style="color: var(--danger);">Lỗi tải danh sách!</p>';
+    box.innerHTML = '<p class="sub-text" style="color: var(--danger);">Lỗi tải thống kê thành viên!</p>';
   }
 }
 
