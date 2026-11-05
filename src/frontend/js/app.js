@@ -380,9 +380,13 @@ async function sendStartSessionRequest(payload) {
       currentSessionId = data.sessionId;
       currentSessionSecret = data.sessionSecret;
       
-      // NEO THỜI GIAN: Lưu mốc giờ Server và mốc performance nội bộ
-      serverStartMs = data.serverStartMs;
+      // ÉP KIỂU SỐ NGUYÊN CHẮC CHẮN TRÁNH LỖI NaNs
+      serverStartMs = Number(data.serverStartMs);
       localStartPerfMs = performance.now();
+
+      if (isNaN(serverStartMs)) {
+        serverStartMs = new Date().getTime(); // Fallback nếu gặp sự cố
+      }
 
       localStorage.setItem("CURRENT_SESSION_ID", currentSessionId);
 
@@ -391,7 +395,7 @@ async function sendStartSessionRequest(payload) {
       document.getElementById("session-form-card")?.classList.add("hidden");
       document.getElementById("qr-display-card")?.classList.remove("hidden");
 
-      // Bắt đầu đếm bước 30s hoàn toàn Offline dựa trên Mốc Neo Server
+      // Bắt đầu bộ đếm Offline
       startAnchorBasedQRCountdown();
     } else {
       alert("Lỗi tạo phiên: " + data.error);
@@ -470,12 +474,15 @@ async function handleCloseSession() {
 
 // 8. Thuật toán sinh Mã QR 8 ký tự Offline dựa trên Mốc Neo Server
 function generateAnchorQR(secret, stepOffset) {
+  if (!serverStartMs || isNaN(serverStartMs)) return "--------";
+
   const elapsedMs = performance.now() - localStartPerfMs;
   const currentEstimatedServerMs = serverStartMs + elapsedMs;
 
   const timeStep = Math.floor(currentEstimatedServerMs / 30000) + (stepOffset || 0);
   const rawString = secret + "_" + timeStep;
 
+  // Hash đơn giản chuẩn hóa 8 ký tự Hex
   let hash = 0;
   for (let i = 0; i < rawString.length; i++) {
     hash = ((hash << 5) - hash) + rawString.charCodeAt(i);
@@ -491,7 +498,7 @@ function startAnchorBasedQRCountdown() {
   lastStep = -1;
 
   function tick() {
-    if (!currentSessionId || !currentSessionSecret) return;
+    if (!currentSessionId || !serverStartMs || isNaN(serverStartMs)) return;
 
     const elapsedMs = performance.now() - localStartPerfMs;
     const currentEstimatedServerMs = serverStartMs + elapsedMs;
@@ -500,9 +507,12 @@ function startAnchorBasedQRCountdown() {
     const secondsRemaining = 30 - Math.floor((currentEstimatedServerMs % 30000) / 1000);
 
     const countdownElem = document.getElementById("qr-countdown");
-    if (countdownElem) countdownElem.textContent = secondsRemaining;
+    if (countdownElem) {
+      // Đảm bảo không bao giờ hiển thị NaNs
+      countdownElem.textContent = isNaN(secondsRemaining) ? "30" : secondsRemaining;
+    }
 
-    // Tự động sinh và hiển thị QR mới ngay tại Client khi nhảy sang bước 30s mới
+    // Đổi ảnh QR & Mã chữ mỗi khi nhảy sang bước 30s mới
     if (currentStep !== lastStep) {
       lastStep = currentStep;
       const rawQR = generateAnchorQR(currentSessionSecret, 0);
