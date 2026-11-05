@@ -217,7 +217,7 @@ async function toggleGroupMembers(groupId) {
   }
 
   box.classList.remove("hidden");
-  box.innerHTML = '<p class="sub-text">⏳ Đang tổng hợp dữ liệu thống kê từ hệ thống...</p>';
+  box.innerHTML = '<p class="sub-text">⏳ Đang rà soát dữ liệu thống kê từ hệ thống...</p>';
 
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
@@ -229,7 +229,8 @@ async function toggleGroupMembers(groupId) {
     });
     const data = await res.json();
 
-    if (data.success && data.members.length > 0) {
+    if (data.success && data.members && data.members.length > 0) {
+      // Đọc đúng đối tượng groupSummary từ Backend
       const sum = data.groupSummary || { totalWeekSessions: 0, totalMonthSessions: 0, totalYearSessions: 0 };
 
       box.innerHTML = `
@@ -237,8 +238,8 @@ async function toggleGroupMembers(groupId) {
           <table class="data-table" style="margin: 0; font-size: 0.8rem; border-collapse: collapse; width: 100%; text-align: center;">
             <thead>
               <tr style="background: #f1f3f4;">
-                <th rowspan="3" style="vertical-align: middle; border: 1px solid #dadce0;">Mã NV/HS</th>
-                <th rowspan="3" style="vertical-align: middle; border: 1px solid #dadce0; text-align: left; padding-left: 8px;">Họ và Tên</th>
+                <th rowspan="3" style="vertical-align: middle; border: 1px solid #dadce0; min-width: 80px;">Mã NV/HS</th>
+                <th rowspan="3" style="vertical-align: middle; border: 1px solid #dadce0; text-align: left; padding-left: 8px; min-width: 120px;">Họ và Tên</th>
                 <th colspan="2" style="background: #e8f0fe; border: 1px solid #dadce0;">Tuần Này</th>
                 <th colspan="2" style="background: #e6f4ea; border: 1px solid #dadce0;">Tháng Này</th>
                 <th colspan="2" style="background: #fef7e0; border: 1px solid #dadce0;">Năm Nay</th>
@@ -249,12 +250,12 @@ async function toggleGroupMembers(groupId) {
                 <th colspan="2" style="background: #fef7e0; border: 1px solid #dadce0;">Tổng: <strong>${sum.totalYearSessions}</strong> phiên</th>
               </tr>
               <tr style="font-size: 0.75rem;">
-                <th style="color: #d93025; border: 1px solid #dadce0; width: 60px;">Trễ</th>
-                <th style="color: #b06000; border: 1px solid #dadce0; width: 60px;">Vắng</th>
-                <th style="color: #d93025; border: 1px solid #dadce0; width: 60px;">Trễ</th>
-                <th style="color: #b06000; border: 1px solid #dadce0; width: 60px;">Vắng</th>
-                <th style="color: #d93025; border: 1px solid #dadce0; width: 60px;">Trễ</th>
-                <th style="color: #b06000; border: 1px solid #dadce0; width: 60px;">Vắng</th>
+                <th style="color: #d93025; border: 1px solid #dadce0; width: 50px;">Trễ</th>
+                <th style="color: #b06000; border: 1px solid #dadce0; width: 50px;">Vắng</th>
+                <th style="color: #d93025; border: 1px solid #dadce0; width: 50px;">Trễ</th>
+                <th style="color: #b06000; border: 1px solid #dadce0; width: 50px;">Vắng</th>
+                <th style="color: #d93025; border: 1px solid #dadce0; width: 50px;">Trễ</th>
+                <th style="color: #b06000; border: 1px solid #dadce0; width: 50px;">Vắng</th>
               </tr>
             </thead>
             <tbody>
