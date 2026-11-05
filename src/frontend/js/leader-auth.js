@@ -57,13 +57,14 @@ function setupLeaderAuthEvents() {
       const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
       const res = await fetch(apiUrl, {
         method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ action: "leaderLogin", email: email, password: password })
       });
       const data = await res.json();
 
       if (data.success) {
-        localStorage.setItem("CHECKIN_LEADER_SESSION", data.email);
-        alert(data.message);
+        localStorage.setItem("CHECKIN_LEADER_SESSION", data.email || email);
+        alert(data.message || "Đăng nhập thành công!");
         checkLeaderAuth();
       } else {
         alert("Lỗi đăng nhập: " + data.error);
@@ -82,7 +83,7 @@ function setupLeaderAuthEvents() {
   // 3. Làm mới danh sách Nhóm
   document.getElementById("btn-refresh-groups")?.addEventListener("click", loadLeaderGroups);
 
-  // 4. Reset Thiết Bị Cho Thành Viên (Liên kết thiết bị mới)
+  // 4. Reset Thiết Bị Cho Thành Viên
   document.getElementById("btn-leader-reset-device")?.addEventListener("click", async () => {
     const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
     const userId = document.getElementById("leader-reset-user-id")?.value.trim().toUpperCase();
@@ -96,6 +97,7 @@ function setupLeaderAuthEvents() {
       const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
       const res = await fetch(apiUrl, {
         method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
           action: "leaderResetDevice",
           email: leaderEmail,
@@ -131,6 +133,7 @@ async function loadLeaderGroups() {
   try {
     const res = await fetch(apiUrl, {
       method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ action: "getLeaderGroups", email: leaderEmail })
     });
     const data = await res.json();
@@ -192,7 +195,6 @@ function renderLeaderGroups(groups) {
   `).join("");
 }
 
-localStorage.setItem("CHECKIN_LEADER_SESSION", emailLeader);
 // 2. Thao Tác: Điểm Danh Nhanh Từng Nhóm
 function quickStartSession(groupId) {
   const selectElem = document.getElementById("group-id");
@@ -207,7 +209,7 @@ function quickStartSession(groupId) {
   document.getElementById("tab-session")?.classList.remove("hidden");
 }
 
-// 3. Thao Tác: Bật/Tắt Hiển Thị Danh Sách Thành Viên & Thống Kê Đúng/Trễ
+// 3. Thao Tác: Bật/Tắt Hiển Thị Danh Sách Thành Viên & Thống Kê
 async function toggleGroupMembers(groupId) {
   const box = document.getElementById(`members-box-${groupId}`);
   if (!box) return;
@@ -220,10 +222,9 @@ async function toggleGroupMembers(groupId) {
   box.classList.remove("hidden");
   box.innerHTML = '<p class="sub-text">⏳ Đang tổng hợp dữ liệu thống kê...</p>';
 
-  // Đảm bảo lấy đúng Email Leader từ Session
   let leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   if (!leaderEmail) {
-    const emailBadge = document.getElementById("leader-email-badge");
+    const emailBadge = document.getElementById("leader-badge") || document.getElementById("leader-email-badge");
     if (emailBadge) leaderEmail = emailBadge.textContent.trim();
   }
 
@@ -233,11 +234,12 @@ async function toggleGroupMembers(groupId) {
     console.log("🚀 [FETCH MEMBERS] Gửi yêu cầu với Email:", leaderEmail, "| Group:", groupId);
     const res = await fetch(apiUrl, {
       method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" }, // Dùng text/plain để tránh lỗi CORS với GAS
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         action: "getGroupMembers",
         email: leaderEmail,
-        groupId: groupId })
+        groupId: groupId
+      })
     });
     const data = await res.json();
     console.log("📥 [MEMBERS RESPONSE]:", data);
@@ -280,12 +282,12 @@ async function toggleGroupMembers(groupId) {
                 <tr>
                   <td style="border: 1px solid #dadce0;"><strong>${m.userId}</strong></td>
                   <td style="border: 1px solid #dadce0; text-align: left; padding-left: 8px;">${m.fullName}</td>
-                  <td style="border: 1px solid #dadce0; color: ${m.weekLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.weekLate}</td>
-                  <td style="border: 1px solid #dadce0; color: ${m.weekAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.weekAbsent}</td>
-                  <td style="border: 1px solid #dadce0; color: ${m.monthLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.monthLate}</td>
-                  <td style="border: 1px solid #dadce0; color: ${m.monthAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.monthAbsent}</td>
-                  <td style="border: 1px solid #dadce0; color: ${m.yearLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.yearLate}</td>
-                  <td style="border: 1px solid #dadce0; color: ${m.yearAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.yearAbsent}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.weekLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.weekLate ?? 0}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.weekAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.weekAbsent ?? 0}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.monthLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.monthLate ?? 0}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.monthAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.monthAbsent ?? 0}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.yearLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.yearLate ?? 0}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.yearAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.yearAbsent ?? 0}</td>
                 </tr>
               `).join("")}
             </tbody>
@@ -300,6 +302,7 @@ async function toggleGroupMembers(groupId) {
     box.innerHTML = '<p class="sub-text" style="color: var(--danger);">Lỗi kết nối máy chủ!</p>';
   }
 }
+
 // 4. Thao Tác: Xuất File Excel Kết Quả Điểm Danh Của Nhóm
 async function downloadGroupAttendanceReport(groupId) {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
@@ -308,11 +311,12 @@ async function downloadGroupAttendanceReport(groupId) {
   try {
     const res = await fetch(apiUrl, {
       method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ action: "getGroupAttendanceReport", email: leaderEmail, groupId: groupId })
     });
     const data = await res.json();
 
-    if (data.success && data.records.length > 0) {
+    if (data.success && data.records && data.records.length > 0) {
       const exportData = data.records.map(r => ({
         "Ticket ID": r.ticketId,
         "Thời Gian": r.timestamp,
@@ -345,10 +349,11 @@ async function confirmDeleteGroup(groupId) {
   try {
     const res = await fetch(apiUrl, {
       method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ action: "deleteGroup", email: leaderEmail, groupId: groupId })
     });
     const data = await res.json();
-    alert(data.message);
+    alert(data.message || "Đã xóa nhóm!");
     loadLeaderGroups();
   } catch (err) {
     alert("Lỗi xóa nhóm: " + err.toString());
@@ -406,6 +411,7 @@ function setupUploadTabEvents() {
       const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
       const res = await fetch(apiUrl, {
         method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
           action: "batchUploadRoster",
           email: leaderEmail,
@@ -468,6 +474,7 @@ function setupRegisterPageEvents() {
       const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
       const res = await fetch(apiUrl, {
         method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ action: "verifyCustomSheet", customSheetUrl: customSheetUrl })
       });
       const data = await res.json();
@@ -507,6 +514,7 @@ function setupRegisterPageEvents() {
       const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
       const res = await fetch(apiUrl, {
         method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
           action: "registerLeader",
           fullName: fullName,
@@ -518,7 +526,7 @@ function setupRegisterPageEvents() {
       const data = await res.json();
 
       if (data.success) {
-        alert(data.message);
+        alert(data.message || "Đăng ký thành công!");
         window.location.href = "leader.html";
       } else {
         alert("Lỗi đăng ký: " + data.error);
