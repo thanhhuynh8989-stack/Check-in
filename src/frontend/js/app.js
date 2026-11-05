@@ -157,7 +157,7 @@ function tickScan() {
   }
 }
 
-// 3. Member Điểm Danh (Đã sửa lỗi hỏi quyền GPS liên tục)
+// 3. Member Điểm Danh (GPS + Quét QR)
 function submitCheckinRequest(rawQrCode) {
   if (isRequestingGPS) return;
 
@@ -185,7 +185,7 @@ function submitCheckinRequest(rawQrCode) {
   const gpsOptions = {
     enableHighAccuracy: true,
     timeout: 8000,
-    maximumAge: 5000 // Cache vị trí 5s gần nhất để tránh bật chip GPS phần cứng liên tục
+    maximumAge: 5000 // Cache vị trí 5s gần nhất để tránh kích hoạt GPS phần cứng liên tục
   };
 
   navigator.geolocation.getCurrentPosition(
@@ -274,7 +274,7 @@ function renderHistory() {
   `).join("");
 }
 
-// 4. Leader Khởi Tạo Phiên (Hỗ trợ cả GPS & Nhập Địa Chỉ Thủ Công)
+// 4. Leader Khởi Tạo Phiên (GPS hoặc Địa chỉ thủ công)
 async function handleLeaderStartSession() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   const groupId = document.getElementById("group-id")?.value.trim().toUpperCase();
@@ -373,10 +373,13 @@ function renderQRAndText(sessionId, rawQR) {
   }
 }
 
-// 6. Reset Giao Diện Leader về Form Tạo Phiên
+// 6. Reset Giao Diện Leader về Form Tạo Phiên & Dọn Dẹp Session State
 function resetToSessionForm(message) {
   if (qrTimerInterval) clearInterval(qrTimerInterval);
   if (message) alert(message);
+
+  // Xóa triệt để Session ID để không bị xung đột phiên cũ
+  localStorage.removeItem("CURRENT_SESSION_ID");
 
   document.getElementById("qr-display-card")?.classList.add("hidden");
   document.getElementById("session-form-card")?.classList.remove("hidden");
@@ -437,7 +440,7 @@ async function refreshQRCodeFromServer() {
     if (data.success) {
       renderQRAndText(data.sessionId, data.rawQR);
     } else {
-      // Nếu Server báo phiên đã bị đóng/hết hạn trễ tối đa -> Tự chuyển giao diện
+      // Nếu Server báo phiên đã đóng / quá hạn trễ tối đa -> Tự chuyển giao diện Leader
       resetToSessionForm("🔔 Phiên điểm danh đã kết thúc thời gian cho phép!");
     }
   } catch (err) {
@@ -445,7 +448,7 @@ async function refreshQRCodeFromServer() {
   }
 }
 
-// 9. Bộ Đếm Ngược 30 Giây Thời Gian Thực
+// 9. Bộ Đếm Ngược 30 Giây Thời Gian Thực Đồng Bộ
 function startQRCountdown() {
   if (qrTimerInterval) clearInterval(qrTimerInterval);
 
