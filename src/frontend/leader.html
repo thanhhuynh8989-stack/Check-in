@@ -2,199 +2,229 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leader Dashboard - Check-in</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Leader Dashboard</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <div class="app-container">
+    
+    <!-- HEADER ĐỒNG BỘ VỚI HAMBURGER MENU -->
     <header class="app-header">
-      <h1>👑 Leader Dashboard</h1>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <span id="leader-badge" class="badge">Leader</span>
-        <button id="btn-leader-logout" class="btn secondary hidden" style="width: auto; padding: 4px 10px; font-size: 0.8rem;">Đăng xuất</button>
-      </div>
+      <button id="btn-hamburger" class="hamburger-btn" aria-label="Mở Menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <h1>👑 Leader Panel</h1>
+      <div id="leader-badge" class="badge">Leader</div>
     </header>
 
-    <!-- FORM ĐĂNG NHẬP LEADER (Hiện khi chưa đăng nhập) -->
-    <section id="leader-login-card" class="card">
-      <h2>🔐 Đăng Nhập Leader</h2>
-      <p class="sub-text">Nhập Email và Mật khẩu Leader để quản lý phiên và danh sách nhóm.</p>
+    <!-- NAVIGATION DRAWER MENU -->
+    <div id="menu-overlay" class="menu-overlay hidden"></div>
+    <aside id="nav-drawer" class="nav-drawer hidden">
+      <div class="drawer-header">
+        <h3>⚡ Navigation Menu</h3>
+        <button id="btn-close-drawer" class="close-btn">&times;</button>
+      </div>
+      <ul class="drawer-menu">
+        <li><a href="index.html">📱 Điểm Danh Member</a></li>
+        <li><a href="leader.html" class="active">👑 Trang Leader (Quản Lý)</a></li>
+        <li><a href="register-leader.html">📝 Đăng Ký Leader</a></li>
+        <li><a href="admin.html">🛡️ Trang Admin (Hệ Thống)</a></li>
+      </ul>
+    </aside>
+
+    <!-- ĐĂNG NHẬP LEADER (NẾU CHƯA LOGGED IN) -->
+    <div id="leader-login-card" class="card">
+      <h2>🔑 Đăng Nhập Leader</h2>
+      <p class="sub-text">Nhập Email và Mật khẩu tài khoản Leader để quản lý phiên.</p>
+      
+      <div class="tip-box">
+        <span class="tip-icon">💡</span>
+        <div class="tip-content">
+          <strong>Tips:</strong> Đăng nhập để khởi tạo phiên điểm danh, xem danh sách nhóm hoặc reset máy cho thành viên.
+        </div>
+      </div>
+
       <div class="form-group">
         <label>Email Leader</label>
-        <input type="email" id="leader-login-email" placeholder="email@gmail.com">
+        <input type="email" id="leader-login-email" placeholder="vd: leader@gmail.com">
       </div>
       <div class="form-group">
         <label>Mật Khẩu</label>
         <input type="password" id="leader-login-pass" placeholder="••••••••">
       </div>
       <button id="btn-leader-login" class="btn primary">Đăng Nhập</button>
-      <div style="margin-top: 15px; text-align: center;">
-        <a href="register-leader.html" style="color: var(--primary); font-size: 0.85rem; text-decoration: none;">Chưa có tài khoản? Đăng ký Leader ngay →</a>
-      </div>
-    </section>
+    </div>
 
-    <!-- GIAO DIỆN CHÍNH LEADER (Hiện sau khi đã đăng nhập thành công) -->
-    <main id="leader-dashboard-content" class="hidden">
-      <!-- Nav 3 Tab (Mobile Responsive) -->
-      <nav class="tab-bar" style="overflow-x: auto; white-space: nowrap;">
-        <button class="tab-btn active" data-tab="tab-session">🚀 Điểm Danh</button>
-        <button class="tab-btn" data-tab="tab-groups">👥 Quản Lý Nhóm</button>
-        <button class="tab-btn" data-tab="tab-upload">📥 Nhập/Xuất Data</button>
+    <!-- DASHBOARD CHÍNH CỦA LEADER -->
+    <div id="leader-dashboard-content" class="hidden">
+      
+      <!-- TAB BAR LEADER -->
+      <nav class="tab-bar">
+        <button class="tab-btn active" data-tab="tab-session">Điểm Danh</button>
+        <button class="tab-btn" data-tab="tab-groups">Quản Lý Nhóm</button>
+        <button class="tab-btn" data-tab="tab-upload">Upload Data</button>
       </nav>
 
-      <!-- TAB 1: KHỞI TẠO PHIÊN -->
-      <section id="tab-session" class="tab-content active">
+      <!-- TAB 1: KHỞI TẠO PHIÊN & HIỂN THỊ QR CODE -->
+      <div id="tab-session" class="tab-content active">
+        
+        <!-- CARD TẠO PHIÊN -->
         <div id="session-form-card" class="card">
-          <h2>Khởi Tạo Phiên Mới</h2>
+          <h2>🚀 Khởi Tạo Phiên Mới</h2>
+          
+          <div class="tip-box">
+            <span class="tip-icon">💡</span>
+            <div class="tip-content">
+              <strong>Tips Leader:</strong> Bạn có thể chọn nhập Địa chỉ thủ công nếu ở trong nhà/phòng kín bắt sóng GPS yếu!
+            </div>
+          </div>
+
           <div class="form-group">
             <label>Mã Nhóm / Lớp</label>
-            <select id="group-id" style="text-transform: uppercase;">
-              <option value="">-- Đang tải danh sách nhóm... --</option>
+            <select id="group-id">
+              <option value="">-- Chọn Nhóm Phụ Trách --</option>
             </select>
-            <small class="sub-text">Chỉ các nhóm bạn phụ trách mới xuất hiện ở đây.</small>
           </div>
+
           <div class="form-row">
-            <div class="form-group">
-              <label>Thời hạn Điểm danh</label>
-              <input type="number" id="deadline-min" value="15" min="1">
+            <div class="form-group" style="flex: 1;">
+              <label>Thời Gian Bài/Đến (Phút)</label>
+              <input type="number" id="deadline-min" value="15">
             </div>
-            <div class="form-group">
+            <div class="form-group" style="flex: 1;">
               <label>Trễ Tối Đa (Phút)</label>
-              <input type="number" id="max-late-min" value="30" min="0">
+              <input type="number" id="max-late-min" value="30">
             </div>
           </div>
 
-          <!-- Bổ sung Phương thức Xác định Vị trí -->
           <div class="form-group">
-            <label>Phương Thức Xác Định Vị Trí Mốc</label>
-            <div style="display: flex; gap: 15px; margin-top: 6px; margin-bottom: 8px;">
+            <label>Phương Thức Vị Trí Mốc</label>
+            <div style="display: flex; gap: 12px; margin-top: 4px;">
               <label style="font-weight: normal; cursor: pointer;">
-                <input type="radio" name="location-type" value="gps" checked onchange="toggleLocationInput()"> 📍 Dùng GPS hiện tại
+                <input type="radio" name="location-type" value="gps" checked onclick="toggleLocationInput()"> 📍 Dùng GPS thiết bị
               </label>
               <label style="font-weight: normal; cursor: pointer;">
-                <input type="radio" name="location-type" value="address" onchange="toggleLocationInput()"> 🗺️ Nhập địa chỉ thủ công
+                <input type="radio" name="location-type" value="address" onclick="toggleLocationInput()"> 🗺️ Nhập địa chỉ thủ công
               </label>
             </div>
           </div>
 
-          <!-- Ô nhập địa chỉ thủ công (Hiển thị khi chọn "Nhập địa chỉ thủ công") -->
           <div id="address-input-box" class="form-group hidden">
-            <label>Địa Chỉ Mốc Điểm Danh (Tra cứu Google Maps)</label>
-            <input type="text" id="leader-address" placeholder="VD: 254 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng">
-            <small class="sub-text">Hệ thống sẽ tự động chuyển địa chỉ này thành tọa độ GPS chính xác.</small>
+            <label>Địa Chỉ Mốc (Google Maps Tra Cứu)</label>
+            <input type="text" id="leader-address" placeholder="VD: 254 Nguyễn Văn Linh, Đà Nẵng">
           </div>
 
-          <div class="form-group">
-            <label>Bán Kính GPS (Mét)</label>
-            <select id="gps-radius">
-              <option value="20">20 mét (Trong phòng)</option>
-              <option value="50" selected>50 mét (Mặc định)</option>
-              <option value="100">100 mét (Hội trường lớn)</option>
-              <option value="200">200 mét (Khuôn viên)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Link Google Sheet Riêng (Tùy Chọn)</label>
-            <input type="url" id="custom-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/...">
-          </div>
-          <button id="btn-start-session" class="btn primary">🚀 Bắt Đầu Điểm Danh</button>
+          <button id="btn-start-session" class="btn primary">Bắt Đầu Phiên Điểm Danh</button>
         </div>
 
-        <!-- Khung Hiển Thị Mã QR Code Xoay Vòng -->
+        <!-- CARD HIỂN THỊ MÃ QR XOAY VÒNG 30S -->
         <div id="qr-display-card" class="card text-center hidden">
-          <h2>Mã QR Điểm Danh</h2>
-          <p id="session-info-text">Đang phát dữ liệu phiên...</p>
+          <h2>📱 Mã QR Điểm Danh</h2>
+          <p class="sub-text">Mã QR và Mã chữ tự động xoay vòng mỗi 30 giây.</p>
+
           <div id="qrcode-box" class="qrcode-container"></div>
-          <div class="qr-timer-box">
-            <span>Tự động xoay mã sau: <strong id="qr-countdown">30</strong>s</span>
-          </div>
-          <div class="form-group" style="margin-top: 1rem;">
-            <label>Mã Nhập Tay Dự Phòng:</label>
-            <h1 id="qr-text-code" class="text-highlight">--------</h1>
-          </div>
-          <button id="btn-close-session" class="btn danger">🛑 Đóng Phiên Thủ Công</button>
-        </div>
-      </section>
 
-      <!-- TAB 2: QUẢN LÝ NHÓM -->
-      <section id="tab-groups" class="tab-content hidden">
-        <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h3>Danh Sách Nhóm Phụ Trách</h3>
-            <button id="btn-refresh-groups" class="btn secondary" style="width: auto; padding: 6px 12px;">🔄 Tải lại</button>
+          <div class="ticket-box" style="margin: 12px 0;">
+            <span>Mã Nhập Tay Dự Phòng (8 Ký Tự):</span>
+            <strong id="qr-text-code" style="font-size: 1.5rem; letter-spacing: 2px; color: var(--primary);">--------</strong>
           </div>
-          <div id="groups-grid-container" class="groups-grid">
-            <p class="sub-text">Đang tải danh sách nhóm...</p>
-          </div>
-        </div>
-      </section>
 
-      <!-- TAB 3: UPLOAD DATA -->
-      <section id="tab-upload" class="tab-content hidden">
-        <div class="card">
-          <h3>1. File Excel Mẫu</h3>
-          <p class="sub-text">Tải file mẫu chuẩn bao gồm các cột: <strong>MãNgười, HọTên, MãNhóm, GhiChú</strong>.</p>
-          <button id="btn-download-template" class="btn secondary">📄 Tải File Excel Mẫu (.xlsx)</button>
+          <p class="qr-timer-box">Mã sẽ tự đổi sau: <strong id="qr-countdown" style="color: var(--danger); font-size: 1.2rem;">30</strong>s</p>
+          <button id="btn-close-session" class="btn danger" style="margin-top: 12px;">🔴 Đóng Phiên Ngay Lập Tức</button>
         </div>
 
+      </div>
+
+      <!-- TAB 2: QUẢN LÝ NHÓM & RESET THIẾT BỊ -->
+      <div id="tab-groups" class="tab-content hidden">
         <div class="card">
-          <h3>2. Upload Danh Sách Thành Viên</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3>👥 Danh Sách Nhóm Phụ Trách</h3>
+            <button id="btn-refresh-groups" class="btn secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">🔄 Tải lại</button>
+          </div>
+          <div id="groups-grid-container"></div>
+        </div>
+
+        <!-- KHUNG RESET THIẾT BỊ -->
+        <div class="card" style="border-top: 3px solid var(--danger);">
+          <h3>🔄 Reset Thiết Bị (Cho Học Sinh / Nhân Viên Đổi Máy)</h3>
+          
+          <div class="tip-box">
+            <span class="tip-icon">💡</span>
+            <div class="tip-content">
+              <strong>Tips Reset:</strong> Khi học sinh/nhân viên mua điện thoại mới, Leader chỉ cần bấm Reset ở đây. Lần tới học sinh nhập Mã NV/HS, máy mới sẽ tự động được liên kết!
+            </div>
+          </div>
+
           <div class="form-group">
-            <label>Chọn File Excel hoặc CSV (.xlsx, .xls, .csv)</label>
-            <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv">
+            <label>Mã Thành Viên (Mã NV/HS)</label>
+            <div class="form-inline">
+              <input type="text" id="leader-reset-user-id" placeholder="VD: NV001" style="text-transform: uppercase;">
+              <button id="btn-leader-reset-device" class="btn danger">Reset Máy</button>
+            </div>
           </div>
+
+          <!-- THÔNG BÁO KẾT QUẢ RESET -->
+          <div id="leader-reset-result" class="ticket-box hidden" style="margin-top: 10px; text-align: center;">
+            <span>Trạng thái Reset:</span>
+            <strong id="leader-new-code" style="color: var(--primary); font-size: 1.1rem; display: block; margin-top: 4px;">Đã sẵn sàng kết nối máy mới</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: UPLOAD DATA EXCEL -->
+      <div id="tab-upload" class="tab-content hidden">
+        <div class="card">
+          <h3>📥 Tải Mẫu & Upload Excel</h3>
+          
+          <div class="tip-box">
+            <span class="tip-icon">💡</span>
+            <div class="tip-content">
+              <strong>Tips Upload:</strong> Tải file mẫu .xlsx, điền danh sách thành viên rồi upload lên để hệ thống tự phân nhóm.
+            </div>
+          </div>
+
+          <button id="btn-download-template" class="btn secondary" style="margin-bottom: 12px;">📄 Tải File Excel Mẫu (.xlsx)</button>
+          
+          <div class="form-group">
+            <label>Chọn File Excel Danh Sách Thành Viên</label>
+            <input type="file" id="excel-file-input" accept=".xlsx, .xls">
+          </div>
+
           <div id="file-preview-box" class="hidden">
-            <p class="sub-text">Đã đọc <strong id="preview-count">0</strong> dòng thành viên.</p>
-            <button id="btn-process-upload" class="btn primary">⬆️ Tải Lên Hệ Thống & Sinh Mã</button>
+            <p class="sub-text">Đã đọc: <strong id="preview-count">0</strong> dòng dữ liệu.</p>
+            <button id="btn-process-upload" class="btn primary">Nạp Vào Hệ Thống</button>
           </div>
         </div>
 
-        <!-- Kết Quả Sinh Mã -->
+        <!-- BẢNG KẾT QUẢ UPLOAD -->
         <div id="upload-result-card" class="card hidden">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-            <h3>3. Kết Quả Kích Hoạt</h3>
-            <button id="btn-export-result-excel" class="btn primary" style="width: auto; padding: 6px 12px;">📥 Xuất File Mã Kích Hoạt (.xlsx)</button>
-          </div>
-          <div style="overflow-x: auto; margin-top: 10px;">
-            <table class="data-table" id="result-table">
+          <h3>✅ Kết Quả Nạp Dữ Liệu</h3>
+          <div class="table-responsive">
+            <table id="result-table" class="data-table">
               <thead>
                 <tr>
-                  <th>Mã Người</th>
+                  <th>Mã NV/HS</th>
                   <th>Họ Tên</th>
                   <th>Mã Nhóm</th>
-                  <th>Mã Kích Hoạt (8 Ký Tự)</th>
+                  <th>Trạng Thái</th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
-        </div>
-      </section>
-
-      <!-- Thêm Khung Reset Thiết Bị vào cuối Tab tab-groups trong leader.html -->
-      <div class="card" style="margin-top: 15px; border-top: 3px solid var(--danger);">
-        <h3>🔄 Reset Thiết Bị (Thành Viên Đổi Máy)</h3>
-        <p class="sub-text">Cấp lại Mã Kích Hoạt 8 ký tự mới cho thành viên trong nhóm.</p>
-        <div class="form-group">
-          <label>Mã Thành Viên (Mã NV/HS)</label>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="leader-reset-user-id" placeholder="VD: NV001" style="text-transform: uppercase;">
-            <button id="btn-leader-reset-device" class="btn danger" style="width: auto; white-space: nowrap;">Reset Máy</button>
-          </div>
-        </div>
-        <div id="leader-reset-result" class="ticket-box hidden" style="margin-top: 10px; text-align: center;">
-          <span>Mã Kích Hoạt Mới:</span>
-          <h2 id="leader-new-code" style="color: var(--primary); margin: 5px 0;">--------</h2>
+          <button id="btn-export-result-excel" class="btn secondary" style="margin-top: 12px;">📥 Xuất Excel Danh Sách</button>
         </div>
       </div>
-    </main>
 
-    <footer style="margin-top: 20px; padding-top: 10px; text-align: center; border-top: 1px dashed #ccc;">
-      <a href="index.html" style="color: var(--primary); font-size: 0.85rem; text-decoration: none;">← Quay lại Trang Thành Viên</a>
-    </footer>
+      <button id="btn-leader-logout" class="btn secondary" style="margin-top: 10px;">Đăng Xuất Leader</button>
+    </div>
+
   </div>
 
   <script src="js/app.js"></script>
