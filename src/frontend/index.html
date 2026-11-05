@@ -2,21 +2,43 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Check-in Member</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Hệ Thống Điểm Danh Trực tuyến</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
   <div class="app-container">
+    
+    <!-- HEADER VỚI NÚT HAMBURGER MENU -->
     <header class="app-header">
-      <h1>📋 điểm danh</h1>
+      <button id="btn-hamburger" class="hamburger-btn" aria-label="Mở Menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <h1>📋 Điểm danh</h1>
       <div id="user-badge" class="badge hidden"></div>
     </header>
 
-    <!-- Navigation Tabs -->
+    <!-- NAVIGATION DRAWER (HAMBURGER MENU SLIDE-OUT) -->
+    <div id="menu-overlay" class="menu-overlay hidden"></div>
+    <aside id="nav-drawer" class="nav-drawer hidden">
+      <div class="drawer-header">
+        <h3>⚡ Hệ Thống PWA</h3>
+        <button id="btn-close-drawer" class="close-btn">&times;</button>
+      </div>
+      <ul class="drawer-menu">
+        <li><a href="index.html" class="active">📱 Điểm Danh</a></li>
+        <li><a href="leader.html">👑 Quản lý</a></li>
+        <li><a href="register-leader.html">📝 Đăng Ký Quản lý</a></li>
+    <!--    <li><a href="admin.html">🛡️ Admin</a></li> -->
+      </ul>
+    </aside>
+
+    <!-- TAB SWITCHER NỘI BỘ -->
     <nav class="tab-bar">
-      <button class="tab-btn active" data-tab="checkin-tab">Điểm Danh</button>
+      <button class="tab-btn active" data-tab="checkin-tab">Quét Mã</button>
       <button class="tab-btn" data-tab="history-tab">Lịch Sử</button>
     </nav>
 
@@ -47,7 +69,7 @@
         <button id="btn-toggle-camera" class="btn secondary">Tắt / Bật Camera</button>
       </div>
 
-      <!-- Card Nhập Mã QR Thủ Công (Nếu Camera lỗi) -->
+      <!-- Card Nhập Mã QR Thủ Công -->
       <div class="card">
         <h3>Hoặc Nhập Mã QR Trực Tiếp</h3>
         <div class="form-inline">
@@ -62,9 +84,9 @@
         <h2 id="result-title">Điểm Danh Thành Công</h2>
         <div class="ticket-box">
           <span>Mã Giao Dịch (Ticket ID):</span>
-          <strong id="result-ticket-id">CHK-20261104-1234</strong>
+          <strong id="result-ticket-id">CHK-20261105-1234</strong>
         </div>
-        <p id="result-detail">Thời điểm: 10:45 | Trễ: 0 phút | Khoảng cách: 12m</p>
+        <p id="result-detail">Thời điểm: --:-- | Trễ: 0 phút | Khoảng cách: 0m</p>
         <p class="sub-text">Vui lòng chụp màn hình thẻ này để đối soát khi cần thiết.</p>
       </div>
     </section>
@@ -79,15 +101,6 @@
       </div>
     </section>
 
-    <!-- Cầu Nối Chuyển Trang Quản Lý / Admin -->
-    <footer class="app-footer" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #dadce0; text-align: center;">
-      <p style="font-size: 0.85rem; color: #5f6368; margin-bottom: 8px;">BẠN LÀ QUẢN LÝ HOẶC ADMIN?</p>
-      <div style="display: flex; gap: 8px; justify-content: center;">
-        <a href="leader.html" class="btn secondary" style="font-size: 0.8rem; padding: 6px 12px; text-decoration: none;">👑 Trang Leader</a>
-        <a href="register-leader.html" class="btn secondary" style="font-size: 0.8rem; padding: 6px 12px; text-decoration: none;">📝 Đăng Ký Leader</a>
-        <a href="admin.html" class="btn secondary" style="font-size: 0.8rem; padding: 6px 12px; text-decoration: none;">🛡️ Trang Admin</a>
-      </div>
-    </footer>
   </div>
 
   <script src="js/app.js"></script>
