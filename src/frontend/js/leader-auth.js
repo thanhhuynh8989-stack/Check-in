@@ -217,20 +217,22 @@ async function toggleGroupMembers(groupId) {
   }
 
   box.classList.remove("hidden");
-  box.innerHTML = '<p class="sub-text">⏳ Đang rà soát dữ liệu thống kê từ hệ thống...</p>';
+  box.innerHTML = '<p class="sub-text">⏳ Đang tổng hợp dữ liệu thống kê...</p>';
 
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
 
   try {
+    console.log("🚀 [FETCH MEMBERS] Gửi yêu cầu lấy thống kê nhóm:", groupId);
     const res = await fetch(apiUrl, {
       method: "POST",
       body: JSON.stringify({ action: "getGroupMembers", email: leaderEmail, groupId: groupId })
     });
     const data = await res.json();
+    console.log("📥 [MEMBERS RESPONSE]:", data);
 
     if (data.success && data.members && data.members.length > 0) {
-      // Đọc đúng đối tượng groupSummary từ Backend
+      // Đọc an toàn groupSummary
       const sum = data.groupSummary || { totalWeekSessions: 0, totalMonthSessions: 0, totalYearSessions: 0 };
 
       box.innerHTML = `
@@ -238,8 +240,8 @@ async function toggleGroupMembers(groupId) {
           <table class="data-table" style="margin: 0; font-size: 0.8rem; border-collapse: collapse; width: 100%; text-align: center;">
             <thead>
               <tr style="background: #f1f3f4;">
-                <th rowspan="3" style="vertical-align: middle; border: 1px solid #dadce0; min-width: 80px;">Mã NV/HS</th>
-                <th rowspan="3" style="vertical-align: middle; border: 1px solid #dadce0; text-align: left; padding-left: 8px; min-width: 120px;">Họ và Tên</th>
+                <th rowspan="3" style="vertical-align: middle; border: 1px solid #dadce0; min-width: 70px;">Mã NV/HS</th>
+                <th rowspan="3" style="vertical-align: middle; border: 1px solid #dadce0; text-align: left; padding-left: 8px; min-width: 110px;">Họ và Tên</th>
                 <th colspan="2" style="background: #e8f0fe; border: 1px solid #dadce0;">Tuần Này</th>
                 <th colspan="2" style="background: #e6f4ea; border: 1px solid #dadce0;">Tháng Này</th>
                 <th colspan="2" style="background: #fef7e0; border: 1px solid #dadce0;">Năm Nay</th>
@@ -250,12 +252,12 @@ async function toggleGroupMembers(groupId) {
                 <th colspan="2" style="background: #fef7e0; border: 1px solid #dadce0;">Tổng: <strong>${sum.totalYearSessions}</strong> phiên</th>
               </tr>
               <tr style="font-size: 0.75rem;">
-                <th style="color: #d93025; border: 1px solid #dadce0; width: 50px;">Trễ</th>
-                <th style="color: #b06000; border: 1px solid #dadce0; width: 50px;">Vắng</th>
-                <th style="color: #d93025; border: 1px solid #dadce0; width: 50px;">Trễ</th>
-                <th style="color: #b06000; border: 1px solid #dadce0; width: 50px;">Vắng</th>
-                <th style="color: #d93025; border: 1px solid #dadce0; width: 50px;">Trễ</th>
-                <th style="color: #b06000; border: 1px solid #dadce0; width: 50px;">Vắng</th>
+                <th style="color: #d93025; border: 1px solid #dadce0; width: 45px;">Trễ</th>
+                <th style="color: #b06000; border: 1px solid #dadce0; width: 45px;">Vắng</th>
+                <th style="color: #d93025; border: 1px solid #dadce0; width: 45px;">Trễ</th>
+                <th style="color: #b06000; border: 1px solid #dadce0; width: 45px;">Vắng</th>
+                <th style="color: #d93025; border: 1px solid #dadce0; width: 45px;">Trễ</th>
+                <th style="color: #b06000; border: 1px solid #dadce0; width: 45px;">Vắng</th>
               </tr>
             </thead>
             <tbody>
@@ -265,16 +267,16 @@ async function toggleGroupMembers(groupId) {
                   <td style="border: 1px solid #dadce0; text-align: left; padding-left: 8px;">${m.fullName}</td>
                   
                   <!-- Tuần -->
-                  <td style="border: 1px solid #dadce0; color: ${m.weekLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.weekLate}</td>
-                  <td style="border: 1px solid #dadce0; color: ${m.weekAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.weekAbsent}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.weekLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.weekLate ?? 0}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.weekAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.weekAbsent ?? 0}</td>
                   
                   <!-- Tháng -->
-                  <td style="border: 1px solid #dadce0; color: ${m.monthLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.monthLate}</td>
-                  <td style="border: 1px solid #dadce0; color: ${m.monthAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.monthAbsent}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.monthLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.monthLate ?? 0}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.monthAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.monthAbsent ?? 0}</td>
                   
                   <!-- Năm -->
-                  <td style="border: 1px solid #dadce0; color: ${m.yearLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.yearLate}</td>
-                  <td style="border: 1px solid #dadce0; color: ${m.yearAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.yearAbsent}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.yearLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.yearLate ?? 0}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.yearAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.yearAbsent ?? 0}</td>
                 </tr>
               `).join("")}
             </tbody>
@@ -282,14 +284,13 @@ async function toggleGroupMembers(groupId) {
         </div>
       `;
     } else {
-      box.innerHTML = '<p class="sub-text">Nhóm này chưa có thành viên nào.</p>';
+      box.innerHTML = '<p class="sub-text">Nhóm này chưa có thành viên hoặc lỗi tải dữ liệu.</p>';
     }
   } catch (err) {
-    console.error(err);
+    console.error("❌ Lỗi fetch members:", err);
     box.innerHTML = '<p class="sub-text" style="color: var(--danger);">Lỗi tải thống kê thành viên!</p>';
   }
 }
-
 // 4. Thao Tác: Xuất File Excel Kết Quả Điểm Danh Của Nhóm
 async function downloadGroupAttendanceReport(groupId) {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
