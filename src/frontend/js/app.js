@@ -524,7 +524,7 @@ function startAnchorBasedQRCountdown() {
   if (qrTimerInterval) clearInterval(qrTimerInterval);
   lastStep = -1;
 
-  function tick() {
+  async function tick() {
     if (!currentSessionId || !serverStartMs || isNaN(serverStartMs)) return;
 
     const elapsedMs = performance.now() - localStartPerfMs;
@@ -532,8 +532,29 @@ function startAnchorBasedQRCountdown() {
 
     // --- KIỂM TRA MỐC TỰ ĐỘNG ĐÓNG PHIÊN (AUTO CLOSE) ---
     if (sessionAutoCloseMs > 0 && currentEstimatedServerMs >= sessionAutoCloseMs) {
-      console.warn("⏰ [LEADER AUTO CLOSE] Đã hết thời gian cho phép trễ. Tự động đóng phiên!");
+      console.warn("⏰ [LEADER AUTO CLOSE] Đã hết thời gian cho phép trễ. Gửi lệnh đóng phiên về Server!");
+      
+      const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
+      const autoCloseSessionId = currentSessionId;
+
+      // Dọn dẹp giao diện local trước
       resetToSessionForm("🔔 Phiên điểm danh đã tự động đóng do hết thời gian cho phép trễ!");
+
+      // Gửi request ngầm lên Server để chuyển trạng thái cột J trên Google Sheet thành CLOSED
+      try {
+        const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+        await fetch(apiUrl, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "closeSession",
+            email: leaderEmail,
+            sessionId: autoCloseSessionId
+          })
+        });
+        console.log("✅ [SERVER UPDATED] Đã cập nhật CLOSED thành công trên Google Sheet!");
+      } catch (err) {
+        console.error("❌ Lỗi gửi request đóng phiên về Server:", err);
+      }
       return;
     }
 
