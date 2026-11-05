@@ -230,37 +230,50 @@ async function toggleGroupMembers(groupId) {
     const data = await res.json();
 
     if (data.success && data.members.length > 0) {
+      const sum = data.groupSummary || { totalWeekSessions: 0, totalMonthSessions: 0, totalYearSessions: 0 };
+
       box.innerHTML = `
-        <div class="table-responsive" style="margin-top: 5px;">
-          <table class="data-table" style="margin: 0; font-size: 0.8rem;">
+        <div class="table-responsive" style="margin-top: 5px; overflow-x: auto;">
+          <table class="data-table" style="margin: 0; font-size: 0.8rem; border-collapse: collapse; width: 100%; text-align: center;">
             <thead>
-              <tr>
-                <th rowspan="2" style="vertical-align: middle;">Mã NV/HS</th>
-                <th rowspan="2" style="vertical-align: middle;">Họ và Tên</th>
-                <th colspan="2" style="text-align: center; background: #e8f0fe;">Tuần Này</th>
-                <th colspan="2" style="text-align: center; background: #e6f4ea;">Tháng Này</th>
-                <th colspan="2" style="text-align: center; background: #fef7e0;">Năm Nay</th>
+              <tr style="background: #f1f3f4;">
+                <th rowspan="3" style="vertical-align: middle; border: 1px solid #dadce0;">Mã NV/HS</th>
+                <th rowspan="3" style="vertical-align: middle; border: 1px solid #dadce0; text-align: left; padding-left: 8px;">Họ và Tên</th>
+                <th colspan="2" style="background: #e8f0fe; border: 1px solid #dadce0;">Tuần Này</th>
+                <th colspan="2" style="background: #e6f4ea; border: 1px solid #dadce0;">Tháng Này</th>
+                <th colspan="2" style="background: #fef7e0; border: 1px solid #dadce0;">Năm Nay</th>
               </tr>
-              <tr>
-                <th style="color: var(--success); text-align: center;">Đúng</th>
-                <th style="color: var(--danger); text-align: center;">Trễ</th>
-                <th style="color: var(--success); text-align: center;">Đúng</th>
-                <th style="color: var(--danger); text-align: center;">Trễ</th>
-                <th style="color: var(--success); text-align: center;">Đúng</th>
-                <th style="color: var(--danger); text-align: center;">Trễ</th>
+              <tr style="font-size: 0.75rem; color: #5f6368;">
+                <th colspan="2" style="background: #e8f0fe; border: 1px solid #dadce0;">Tổng: <strong>${sum.totalWeekSessions}</strong> phiên</th>
+                <th colspan="2" style="background: #e6f4ea; border: 1px solid #dadce0;">Tổng: <strong>${sum.totalMonthSessions}</strong> phiên</th>
+                <th colspan="2" style="background: #fef7e0; border: 1px solid #dadce0;">Tổng: <strong>${sum.totalYearSessions}</strong> phiên</th>
+              </tr>
+              <tr style="font-size: 0.75rem;">
+                <th style="color: #d93025; border: 1px solid #dadce0; width: 60px;">Trễ</th>
+                <th style="color: #b06000; border: 1px solid #dadce0; width: 60px;">Vắng</th>
+                <th style="color: #d93025; border: 1px solid #dadce0; width: 60px;">Trễ</th>
+                <th style="color: #b06000; border: 1px solid #dadce0; width: 60px;">Vắng</th>
+                <th style="color: #d93025; border: 1px solid #dadce0; width: 60px;">Trễ</th>
+                <th style="color: #b06000; border: 1px solid #dadce0; width: 60px;">Vắng</th>
               </tr>
             </thead>
             <tbody>
               ${data.members.map(m => `
                 <tr>
-                  <td><strong>${m.userId}</strong></td>
-                  <td>${m.fullName}</td>
-                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.weekOnTime || 0}</td>
-                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.weekLate || 0}</td>
-                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.monthOnTime || 0}</td>
-                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.monthLate || 0}</td>
-                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.yearOnTime || 0}</td>
-                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.yearLate || 0}</td>
+                  <td style="border: 1px solid #dadce0;"><strong>${m.userId}</strong></td>
+                  <td style="border: 1px solid #dadce0; text-align: left; padding-left: 8px;">${m.fullName}</td>
+                  
+                  <!-- Tuần -->
+                  <td style="border: 1px solid #dadce0; color: ${m.weekLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.weekLate}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.weekAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.weekAbsent}</td>
+                  
+                  <!-- Tháng -->
+                  <td style="border: 1px solid #dadce0; color: ${m.monthLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.monthLate}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.monthAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.monthAbsent}</td>
+                  
+                  <!-- Năm -->
+                  <td style="border: 1px solid #dadce0; color: ${m.yearLate > 0 ? '#d93025' : '#5f6368'}; font-weight: bold;">${m.yearLate}</td>
+                  <td style="border: 1px solid #dadce0; color: ${m.yearAbsent > 0 ? '#b06000' : '#5f6368'}; font-weight: bold;">${m.yearAbsent}</td>
                 </tr>
               `).join("")}
             </tbody>
@@ -271,6 +284,7 @@ async function toggleGroupMembers(groupId) {
       box.innerHTML = '<p class="sub-text">Nhóm này chưa có thành viên nào.</p>';
     }
   } catch (err) {
+    console.error(err);
     box.innerHTML = '<p class="sub-text" style="color: var(--danger);">Lỗi tải thống kê thành viên!</p>';
   }
 }
