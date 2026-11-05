@@ -371,6 +371,7 @@ async function handleLeaderStartSession() {
 }
 
 let configSecretKey = "CHECKIN_SECRET_KEY_2026"; // Fallback Secret Key
+let sessionAutoCloseMs = 0;
 
 // 1. Nhận response từ Server khi tạo phiên thành công
 async function sendStartSessionRequest(payload) {
@@ -394,7 +395,15 @@ async function sendStartSessionRequest(payload) {
       serverStartMs = Number(data.serverStartMs);
       localStartPerfMs = performance.now();
 
-      console.log(`✅ [LEADER SESSION READY] SessionID: ${currentSessionId} | ServerStartMs: ${serverStartMs}`);
+      // Tính mốc Mili-giây ép đóng phiên (hoặc nhận trực tiếp từ Server)
+      if (data.autoCloseMs) {
+        sessionAutoCloseMs = Number(data.autoCloseMs);
+      } else {
+        const totalMinutes = Number(data.deadlineMinutes || 15) + Number(data.maxLateMinutes || 30);
+        sessionAutoCloseMs = serverStartMs + (totalMinutes * 60000);
+      }
+
+      console.log(`✅ [LEADER SESSION READY] SessionID: ${currentSessionId} | ServerStartMs: ${serverStartMs} | AutoCloseMs: ${sessionAutoCloseMs}`);
 
       localStorage.setItem("CURRENT_SESSION_ID", currentSessionId);
       alert("Khởi tạo phiên thành công!");
@@ -444,6 +453,7 @@ function resetToSessionForm(message) {
   currentSessionSecret = null;
   serverStartMs = 0;
   localStartPerfMs = 0;
+  sessionAutoCloseMs = 0;
   lastStep = -1;
 }
 
@@ -520,12 +530,20 @@ function startAnchorBasedQRCountdown() {
     const elapsedMs = performance.now() - localStartPerfMs;
     const currentEstimatedServerMs = serverStartMs + elapsedMs;
 
+    // --- KIỂM TRA MỐC TỰ ĐỘNG ĐÓNG PHIÊN (AUTO CLOSE) ---
+    if (sessionAutoCloseMs > 0 && currentEstimatedServerMs >= sessionAutoCloseMs) {
+      console.warn("⏰ [LEADER AUTO CLOSE] Đã hết thời gian cho phép trễ. Tự động đóng phiên!");
+      resetToSessionForm("🔔 Phiên điểm danh đã tự động đóng do hết thời gian cho phép trễ!");
+      return;
+    }
+
     const currentStep = Math.floor(currentEstimatedServerMs / 30000);
     const secondsRemaining = 30 - Math.floor((currentEstimatedServerMs % 30000) / 1000);
 
     const countdownElem = document.getElementById("qr-countdown");
     if (countdownElem) countdownElem.textContent = isNaN(secondsRemaining) ? "30" : secondsRemaining;
 
+    // Đổi mã QR mới tại Client ở mỗi bước 30s
     if (currentStep !== lastStep) {
       lastStep = currentStep;
       const rawQR = generateAnchorQR(currentSessionSecret, 0);
