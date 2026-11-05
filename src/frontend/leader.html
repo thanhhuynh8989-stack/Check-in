@@ -94,21 +94,21 @@
 
          <div class="form-row">
           <div class="form-group" style="flex: 1;">
-            <label>Thời Gian Bài/Đến (Phút)</label>
+            <label>Hạn Đúng Giờ (phút)</label>
             <input type="number" id="deadline-min" value="15">
           </div>
           <div class="form-group" style="flex: 1;">
-            <label>Trễ Tối Đa (Phút)</label>
+            <label>Trễ Tối Đa (phút)</label>
             <input type="number" id="max-late-min" value="30">
           </div>
           <div class="form-group" style="flex: 1;">
-            <label>Bán Kính GPS (m)</label>
+            <label>Bán Kính (m)</label>
             <input type="number" id="gps-radius" value="100" placeholder="VD: 100">
           </div>
         </div>
 
           <div class="form-group">
-            <label>Phương Thức Vị Trí Mốc</label>
+            <label>Xác Định Địa Điểm</label>
             <div style="display: flex; gap: 12px; margin-top: 4px;">
               <label style="font-weight: normal; cursor: pointer;">
                 <input type="radio" name="location-type" value="gps" checked onclick="toggleLocationInput()"> 📍 Dùng GPS thiết bị
@@ -120,11 +120,11 @@
           </div>
 
           <div id="address-input-box" class="form-group hidden">
-            <label>Địa Chỉ Mốc (Google Maps Tra Cứu)</label>
+            <label>Địa Điểm Đánh Dấu</label>
             <input type="text" id="leader-address" placeholder="VD: 254 Nguyễn Văn Linh, Đà Nẵng">
           </div>
 
-          <button id="btn-start-session" class="btn primary">Bắt Đầu Phiên Điểm Danh</button>
+          <button id="btn-start-session" class="btn primary">Tạo Phiên Điểm Danh</button>
         </div>
 
         <!-- CARD HIỂN THỊ MÃ QR XOAY VÒNG 30S -->
@@ -149,7 +149,7 @@
       <div id="tab-groups" class="tab-content hidden">
         <div class="card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h3>👥 Danh Sách Nhóm Phụ Trách</h3>
+            <h3>👥 Danh Sách Nhóm</h3>
             <button id="btn-refresh-groups" class="btn secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">🔄 Tải lại</button>
           </div>
           <div id="groups-grid-container"></div>
@@ -162,7 +162,7 @@
           <div class="tip-box">
             <span class="tip-icon">💡</span>
             <div class="tip-content">
-              <strong>Tips Reset:</strong> Khi học sinh/nhân viên mua điện thoại mới, Leader chỉ cần bấm Reset ở đây. Lần tới học sinh nhập Mã NV/HS, máy mới sẽ tự động được liên kết!
+              <strong>Tips Reset:</strong> Khi học sinh/nhân viên thay điện thoại mới, Leader chỉ cần bấm Reset ở đây. Lần tới học sinh/nhân viên nhập Mã NV/HS, máy mới sẽ tự động được liên kết!
             </div>
           </div>
 
