@@ -54,12 +54,12 @@ function setupEventListeners() {
   btnCloseDrawer?.addEventListener("click", closeDrawer);
   menuOverlay?.addEventListener("click", closeDrawer);
 
-  // Tự động đóng Menu khi người dùng bấm chọn 1 đường dẫn trong Drawer
+  // Tự động đóng Menu khi bấm chọn 1 đường dẫn trong Drawer
   document.querySelectorAll(".drawer-menu a").forEach(link => {
     link.addEventListener("click", closeDrawer);
   });
 
-  // 2. Chuyển Tab Nội Bụ (Navigation Tabs Switcher)
+  // 2. Chuyển Tab Nội Bộ (Navigation Tabs Switcher)
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -71,7 +71,7 @@ function setupEventListeners() {
     });
   });
 
-  // 3. Kích Hoạt Thiết Bị Member
+  // 3. Kích Hoạt / Xác Nhận Tài Khoản Member (Gắn DeviceId)
   document.getElementById("btn-register")?.addEventListener("click", handleRegister);
 
   // 4. Gửi Mã QR Nhập Tay Member
@@ -114,10 +114,10 @@ function toggleLocationInput() {
   }
 }
 
-// 1. Kích Hoạt Thiết Bị
+// 1. Liên Kết Máy Tự Động Theo Mã NV/HS (Phương Án 1 - Bỏ Mã Kích Hoạt 8 Ký Tự)
 async function handleRegister() {
-  const userId = document.getElementById("reg-user-id").value.trim().toUpperCase();
-  const activationCode = document.getElementById("reg-code").value.trim().toUpperCase();
+  const userIdElem = document.getElementById("reg-user-id");
+  const userId = userIdElem ? userIdElem.value.trim().toUpperCase() : "";
   let deviceId = localStorage.getItem("CHECKIN_DEVICE_ID");
   
   if (!deviceId) {
@@ -125,8 +125,8 @@ async function handleRegister() {
     localStorage.setItem("CHECKIN_DEVICE_ID", deviceId);
   }
 
-  if (!userId || !activationCode) {
-    alert("Vui lòng nhập đầy đủ Mã người dùng và Mã kích hoạt!");
+  if (!userId) {
+    alert("Vui lòng nhập Mã người dùng (Mã NV/HS)!");
     return;
   }
 
@@ -137,18 +137,18 @@ async function handleRegister() {
       body: JSON.stringify({
         action: "registerDevice",
         userId: userId,
-        activationCode: activationCode,
         deviceId: deviceId
       })
     });
     const data = await res.json();
+
     if (data.success) {
       currentUser = { token: data.token, userId: data.userId, userName: data.userName };
       localStorage.setItem("CHECKIN_USER", JSON.stringify(currentUser));
-      alert("Kích hoạt thiết bị thành công!");
+      alert(`Xác nhận tài khoản ${data.userId} thành công!`);
       initApp();
     } else {
-      alert("Lỗi kích hoạt: " + data.error);
+      alert(data.error);
     }
   } catch (err) {
     alert("Không thể kết nối đến máy chủ: " + err.toString());
@@ -421,7 +421,6 @@ function resetToSessionForm(message) {
   if (qrTimerInterval) clearInterval(qrTimerInterval);
   if (message) alert(message);
 
-  // Xóa triệt để Session ID để không bị xung đột phiên cũ
   localStorage.removeItem("CURRENT_SESSION_ID");
 
   document.getElementById("qr-display-card")?.classList.add("hidden");
@@ -483,7 +482,6 @@ async function refreshQRCodeFromServer() {
     if (data.success) {
       renderQRAndText(data.sessionId, data.rawQR);
     } else {
-      // Nếu Server báo phiên đã đóng / quá hạn trễ tối đa -> Tự chuyển giao diện Leader
       resetToSessionForm("🔔 Phiên điểm danh đã kết thúc thời gian cho phép!");
     }
   } catch (err) {
