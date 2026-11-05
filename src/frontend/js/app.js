@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initApp() {
-  if (!currentUser || !currentUser.token) {
+  if (!currentUser || !currentUser.userId) {
     document.getElementById("activation-section")?.classList.remove("hidden");
     document.getElementById("checkin-tab")?.classList.add("hidden");
   } else {
@@ -28,7 +28,7 @@ function initApp() {
     document.getElementById("checkin-tab")?.classList.remove("hidden");
     const badge = document.getElementById("user-badge");
     if (badge) {
-      badge.textContent = `${currentUser.userName} (${currentUser.userId})`;
+      badge.textContent = `${currentUser.userName || ''} (${currentUser.userId})`;
       badge.classList.remove("hidden");
     }
     startCamera();
@@ -57,12 +57,11 @@ function setupEventListeners() {
   btnCloseDrawer?.addEventListener("click", closeDrawer);
   menuOverlay?.addEventListener("click", closeDrawer);
 
-  // Tự động đóng Menu khi bấm chọn 1 đường dẫn trong Drawer
   document.querySelectorAll(".drawer-menu a").forEach(link => {
     link.addEventListener("click", closeDrawer);
   });
 
-  // 2. Chuyển Tab Nội Bộ (Navigation Tabs Switcher)
+  // 2. Chuyển Tab Nội Bộ
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -74,7 +73,7 @@ function setupEventListeners() {
     });
   });
 
-  // 3. Kích Hoạt / Xác Nhận Tài Khoản Member (Gắn DeviceId)
+  // 3. Kích Hoạt / Xác Nhận Tài Khoản Member
   document.getElementById("btn-register")?.addEventListener("click", handleRegister);
 
   // 4. Gửi Mã QR Nhập Tay Member
@@ -104,7 +103,6 @@ function setupEventListeners() {
   document.getElementById("btn-close-session")?.addEventListener("click", handleCloseSession);
 }
 
-// Chuyển đổi ẩn/hiện ô nhập địa chỉ thủ công trên UI Leader
 function toggleLocationInput() {
   const type = document.querySelector('input[name="location-type"]:checked')?.value;
   const addressBox = document.getElementById("address-input-box");
@@ -137,6 +135,7 @@ async function handleRegister() {
   try {
     const res = await fetch(WEB_APP_URL, {
       method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         action: "registerDevice",
         userId: userId,
@@ -203,12 +202,20 @@ function tickScan() {
   }
 }
 
-// 3. Member Điểm Danh (GPS + Quét QR)
+// 3. Member Điểm Danh (Đã bổ sung truyền UserId, SessionId & QR đầy đủ)
 function submitCheckinRequest(rawQrCode) {
   if (isRequestingGPS) return;
 
   if (!navigator.geolocation) {
     alert("Thiết bị của bạn không hỗ trợ định vị GPS!");
+    resumeScanningWithDelay(2000);
+    return;
+  }
+
+  // Lấy UserId từ đối tượng đăng nhập hiện tại
+  const memberUserId = currentUser ? currentUser.userId : localStorage.getItem("CHECKIN_USER_ID");
+  if (!memberUserId) {
+    alert("Vui lòng kích hoạt/xác nhận Mã NV/HS trước khi điểm danh!");
     resumeScanningWithDelay(2000);
     return;
   }
@@ -219,19 +226,20 @@ function submitCheckinRequest(rawQrCode) {
   const status = document.getElementById("scan-status");
   if (status) status.textContent = "📍 Đang xác minh vị trí GPS...";
 
-  let targetSessionId = localStorage.getItem("CURRENT_SESSION_ID") || "SESS_ACTIVE";
-  let payloadCode = rawQrCode;
+  let targetSessionId = localStorage.getItem("CURRENT_SESSION_ID") || "";
+  let payloadCode = rawQrCode.trim();
 
-  if (rawQrCode.includes("|")) {
-    const parts = rawQrCode.split("|");
+  // Bóc tách sessionId nếu chuỗi QR chứa dạng "SESS_1793849...|A1B2C3D4"
+  if (payloadCode.includes("|")) {
+    const parts = payloadCode.split("|");
     targetSessionId = parts[0].trim();
     payloadCode = parts[1].trim();
   }
 
   console.log("%c📤 [CLIENT SENDING CHECKIN REQUEST]", "color: #1a73e8; font-weight: bold; font-size: 13px;");
+  console.log("• UserId:", memberUserId);
   console.log("• SessionID:", targetSessionId);
-  console.log("• Mã QR Quét Được:", rawQrCode);
-  console.log("• Payload Mã QR Gửi Đi:", payloadCode);
+  console.log("• QR Code:", payloadCode);
 
   const gpsOptions = { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 };
 
@@ -239,8 +247,10 @@ function submitCheckinRequest(rawQrCode) {
     async (pos) => {
       showLoading(true);
       try {
+        // ĐÓNG GÓI PAYLOAD TRUYỀN ĐẦY ĐỦ 100% CÁC BIẾN CHO BACKEND
         const payload = {
           action: "submitCheckin",
+          userId: memberUserId,
           token: currentUser ? currentUser.token : "",
           sessionId: targetSessionId,
           qrCode: payloadCode,
@@ -253,6 +263,7 @@ function submitCheckinRequest(rawQrCode) {
 
         const res = await fetch(WEB_APP_URL, {
           method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify(payload)
         });
         const data = await res.json();
@@ -323,7 +334,7 @@ function renderHistory() {
   `).join("");
 }
 
-// 4. Leader Khởi Tạo Phiên (GPS hoặc Địa chỉ thủ công)
+// 4. Leader Khởi Tạo Phiên
 async function handleLeaderStartSession() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   const groupId = document.getElementById("group-id")?.value.trim().toUpperCase();
@@ -370,10 +381,9 @@ async function handleLeaderStartSession() {
   }, { enableHighAccuracy: true });
 }
 
-let configSecretKey = "CHECKIN_SECRET_KEY_2026"; // Fallback Secret Key
+let configSecretKey = "CHECKIN_SECRET_KEY_2026";
 let sessionAutoCloseMs = 0;
 
-// 1. Nhận response từ Server khi tạo phiên thành công
 async function sendStartSessionRequest(payload) {
   try {
     const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
@@ -381,6 +391,7 @@ async function sendStartSessionRequest(payload) {
     
     const res = await fetch(apiUrl, {
       method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ action: "startSession", ...payload })
     });
     const data = await res.json();
@@ -395,7 +406,6 @@ async function sendStartSessionRequest(payload) {
       serverStartMs = Number(data.serverStartMs);
       localStartPerfMs = performance.now();
 
-      // Tính mốc Mili-giây ép đóng phiên (hoặc nhận trực tiếp từ Server)
       if (data.autoCloseMs) {
         sessionAutoCloseMs = Number(data.autoCloseMs);
       } else {
@@ -421,7 +431,6 @@ async function sendStartSessionRequest(payload) {
   }
 }
 
-// 5. Render Ảnh QR & Mã Chữ Nhập Tay Chuẩn Đồng Bộ Với Backend
 function renderQRAndText(sessionId, rawQR) {
   const textCodeElem = document.getElementById("qr-text-code");
   if (textCodeElem) textCodeElem.textContent = rawQR;
@@ -439,7 +448,6 @@ function renderQRAndText(sessionId, rawQR) {
   }
 }
 
-// 6. Reset Giao Diện Leader về Form Tạo Phiên & Dọn Dẹp Session State
 function resetToSessionForm(message) {
   if (qrTimerInterval) clearInterval(qrTimerInterval);
   if (message) alert(message);
@@ -457,7 +465,6 @@ function resetToSessionForm(message) {
   lastStep = -1;
 }
 
-// 7. Leader Đóng Phiên Thủ Công
 async function handleCloseSession() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   if (!currentSessionId) return alert("Không tìm thấy thông tin phiên hiện tại!");
@@ -469,7 +476,6 @@ async function handleCloseSession() {
 
     const res = await fetch(apiUrl, {
       method: "POST",
-      redirect: "follow",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         action: "closeSession",
@@ -489,7 +495,6 @@ async function handleCloseSession() {
   }
 }
 
-// 8. Thuật toán sinh Mã QR 8 ký tự Offline dựa trên Mốc Neo Server
 function generateAnchorQR(secret, stepOffset) {
   if (!serverStartMs || isNaN(serverStartMs)) return "--------";
 
@@ -499,14 +504,12 @@ function generateAnchorQR(secret, stepOffset) {
 
   const rawString = secret + "_" + timeStep;
 
-  // Dùng CryptoJS băm HMAC-SHA256 giống hệt Utilities.computeHmacSha256Signature của Apps Script
   let code = "";
   if (typeof CryptoJS !== "undefined") {
     const hash = CryptoJS.HmacSHA256(rawString, configSecretKey);
     const base64 = CryptoJS.enc.Base64.stringify(hash);
     code = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '').substring(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, 'X');
   } else {
-    // Fallback nếu thiếu CryptoJS
     let hash = 0;
     for (let i = 0; i < rawString.length; i++) {
       hash = ((hash << 5) - hash) + rawString.charCodeAt(i);
@@ -519,7 +522,6 @@ function generateAnchorQR(secret, stepOffset) {
   return code;
 }
 
-// 9. Bộ Đếm Ngược 30s Offline Dựa Trên Mốc Neo (Không Tốn Request)
 function startAnchorBasedQRCountdown() {
   if (qrTimerInterval) clearInterval(qrTimerInterval);
   lastStep = -1;
@@ -530,21 +532,19 @@ function startAnchorBasedQRCountdown() {
     const elapsedMs = performance.now() - localStartPerfMs;
     const currentEstimatedServerMs = serverStartMs + elapsedMs;
 
-    // --- KIỂM TRA MỐC TỰ ĐỘNG ĐÓNG PHIÊN (AUTO CLOSE) ---
     if (sessionAutoCloseMs > 0 && currentEstimatedServerMs >= sessionAutoCloseMs) {
       console.warn("⏰ [LEADER AUTO CLOSE] Đã hết thời gian cho phép trễ. Gửi lệnh đóng phiên về Server!");
       
       const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
       const autoCloseSessionId = currentSessionId;
 
-      // Dọn dẹp giao diện local trước
       resetToSessionForm("🔔 Phiên điểm danh đã tự động đóng do hết thời gian cho phép trễ!");
 
-      // Gửi request ngầm lên Server để chuyển trạng thái cột J trên Google Sheet thành CLOSED
       try {
         const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
         await fetch(apiUrl, {
           method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({
             action: "closeSession",
             email: leaderEmail,
@@ -564,7 +564,6 @@ function startAnchorBasedQRCountdown() {
     const countdownElem = document.getElementById("qr-countdown");
     if (countdownElem) countdownElem.textContent = isNaN(secondsRemaining) ? "30" : secondsRemaining;
 
-    // Đổi mã QR mới tại Client ở mỗi bước 30s
     if (currentStep !== lastStep) {
       lastStep = currentStep;
       const rawQR = generateAnchorQR(currentSessionSecret, 0);
