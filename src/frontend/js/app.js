@@ -34,26 +34,69 @@ function initApp() {
 }
 
 function setupEventListeners() {
-  // Navigation Tabs Switcher
+  // 1. Navigation Drawer (Hamburger Menu PWA)
+  const btnHamburger = document.getElementById("btn-hamburger");
+  const navDrawer = document.getElementById("nav-drawer");
+  const menuOverlay = document.getElementById("menu-overlay");
+  const btnCloseDrawer = document.getElementById("btn-close-drawer");
+
+  function openDrawer() {
+    navDrawer?.classList.remove("hidden");
+    menuOverlay?.classList.remove("hidden");
+  }
+
+  function closeDrawer() {
+    navDrawer?.classList.add("hidden");
+    menuOverlay?.classList.add("hidden");
+  }
+
+  btnHamburger?.addEventListener("click", openDrawer);
+  btnCloseDrawer?.addEventListener("click", closeDrawer);
+  menuOverlay?.addEventListener("click", closeDrawer);
+
+  // Tự động đóng Menu khi người dùng bấm chọn 1 đường dẫn trong Drawer
+  document.querySelectorAll(".drawer-menu a").forEach(link => {
+    link.addEventListener("click", closeDrawer);
+  });
+
+  // 2. Chuyển Tab Nội Bụ (Navigation Tabs Switcher)
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", (e) => {
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
       document.querySelectorAll(".tab-content").forEach(c => c.classList.add("hidden"));
-      e.target.classList.add("active");
-      document.getElementById(e.target.dataset.tab)?.classList.remove("hidden");
+      
+      const targetBtn = e.currentTarget;
+      targetBtn.classList.add("active");
+      document.getElementById(targetBtn.dataset.tab)?.classList.remove("hidden");
     });
   });
 
-  // Kích Hoạt Thiết Bị Member
+  // 3. Kích Hoạt Thiết Bị Member
   document.getElementById("btn-register")?.addEventListener("click", handleRegister);
 
-  // Gửi Mã QR Nhập Tay Member
+  // 4. Gửi Mã QR Nhập Tay Member
   document.getElementById("btn-submit-manual")?.addEventListener("click", () => {
-    const code = document.getElementById("manual-qr-code").value.trim();
-    if (code) submitCheckinRequest(code);
+    const inputElem = document.getElementById("manual-qr-code");
+    const code = inputElem ? inputElem.value.trim() : "";
+    if (code) {
+      submitCheckinRequest(code);
+    } else {
+      alert("Vui lòng nhập 8 ký tự mã QR!");
+    }
   });
 
-  // Leader: Sự kiện Tạo Phiên & Đóng Phiên
+  // 5. Bật/Tắt Camera Thủ Công
+  document.getElementById("btn-toggle-camera")?.addEventListener("click", () => {
+    if (scanning) {
+      scanning = false;
+      const status = document.getElementById("scan-status");
+      if (status) status.textContent = "Camera đã tắt.";
+    } else {
+      startCamera();
+    }
+  });
+
+  // 6. Leader: Sự kiện Tạo Phiên & Đóng Phiên
   document.getElementById("btn-start-session")?.addEventListener("click", handleLeaderStartSession);
   document.getElementById("btn-close-session")?.addEventListener("click", handleCloseSession);
 }
