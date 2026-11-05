@@ -9,6 +9,7 @@ let scanning = false;
 let currentSessionId = null;
 let currentRawQR = null;
 let qrTimerInterval = null;
+let isRequestingGPS = false; // Biến cờ ngăn chặn gọi GPS chồng chéo (Throttle)
 
 document.addEventListener("DOMContentLoaded", () => {
   initApp();
@@ -156,23 +157,18 @@ function tickScan() {
   }
 }
 
-// 3. Member Bắt Buộc Gửi GPS & Quét QR Điểm Danh
-// Biến cờ ngăn chặn gọi GPS chồng chéo (Throttle)
-let isRequestingGPS = false;
-
 // 3. Member Điểm Danh (Đã sửa lỗi hỏi quyền GPS liên tục)
 function submitCheckinRequest(rawQrCode) {
-  // Nếu đang xử lý một request GPS trước đó thì bỏ qua, tránh spam
   if (isRequestingGPS) return;
 
   if (!navigator.geolocation) {
     alert("Thiết bị của bạn không hỗ trợ định vị GPS!");
-    resumeScanningWithDelay(2000); // Tạm dừng 2s trước khi quét lại
+    resumeScanningWithDelay(2000);
     return;
   }
 
   isRequestingGPS = true;
-  scanning = false; // Tắt scanner ngay lập tức để ngắt vòng lặp requestAnimationFrame
+  scanning = false;
 
   const status = document.getElementById("scan-status");
   if (status) status.textContent = "📍 Đang xác minh vị trí GPS...";
@@ -186,11 +182,10 @@ function submitCheckinRequest(rawQrCode) {
     payloadCode = parts[1].trim();
   }
 
-  // Cấu hình GPS tối ưu: Cho phép dùng vị trí vừa lấy trong vòng 5 giây (maximumAge)
   const gpsOptions = {
     enableHighAccuracy: true,
-    timeout: 8000,       // Hạn giờ 8s
-    maximumAge: 5000     // Sử dụng cache vị trí 5s gần nhất để tránh bật GPS phần cứng liên tục
+    timeout: 8000,
+    maximumAge: 5000 // Cache vị trí 5s gần nhất để tránh bật chip GPS phần cứng liên tục
   };
 
   navigator.geolocation.getCurrentPosition(
@@ -216,7 +211,7 @@ function submitCheckinRequest(rawQrCode) {
           saveHistory(data);
         } else {
           alert("Điểm danh thất bại: " + data.error);
-          resumeScanningWithDelay(3000); // Chờ 3 giây mới cho phép quét lại
+          resumeScanningWithDelay(3000);
         }
       } catch (err) {
         alert("Lỗi kết nối máy chủ!");
@@ -228,7 +223,6 @@ function submitCheckinRequest(rawQrCode) {
     },
     (err) => {
       isRequestingGPS = false;
-      
       let errMsg = "Vui lòng bật quyền GPS trên trình duyệt để điểm danh!";
       if (err.code === err.TIMEOUT) {
         errMsg = "Quá thời gian lấy vị trí GPS. Vui lòng di chuyển ra nơi thoáng hoặc thử lại!";
@@ -237,13 +231,12 @@ function submitCheckinRequest(rawQrCode) {
       }
 
       alert(errMsg);
-      resumeScanningWithDelay(3000); // Dừng camera 3s trước khi cho phép quét tiếp
+      resumeScanningWithDelay(3000);
     },
     gpsOptions
   );
 }
 
-// Hàm phụ trợ: Tạm dừng quét QR trong khoảng thời gian (ms) để không bị spam popup GPS
 function resumeScanningWithDelay(delayMs) {
   setTimeout(() => {
     scanning = true;
@@ -344,7 +337,6 @@ async function sendStartSessionRequest(payload) {
       currentSessionId = data.sessionId;
       localStorage.setItem("CURRENT_SESSION_ID", currentSessionId);
 
-      // Tách mã 8 ký tự từ chuỗi trả về dạng SESS_xxx|X7K2M9P4
       const fullQR = data.qrCode;
       currentRawQR = fullQR.includes("|") ? fullQR.split("|")[1] : fullQR;
 
@@ -381,7 +373,19 @@ function renderQRAndText(sessionId, rawQR) {
   }
 }
 
-// 6. Leader Đóng Phiên Thủ Công
+// 6. Reset Giao Diện Leader về Form Tạo Phiên
+function resetToSessionForm(message) {
+  if (qrTimerInterval) clearInterval(qrTimerInterval);
+  if (message) alert(message);
+
+  document.getElementById("qr-display-card")?.classList.add("hidden");
+  document.getElementById("session-form-card")?.classList.remove("hidden");
+  
+  currentSessionId = null;
+  currentRawQR = null;
+}
+
+// 7. Leader Đóng Phiên Thủ Công
 async function handleCloseSession() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   if (!currentSessionId) return alert("Không tìm thấy thông tin phiên hiện tại!");
@@ -404,12 +408,7 @@ async function handleCloseSession() {
     const data = await res.json();
 
     if (data.success) {
-      if (qrTimerInterval) clearInterval(qrTimerInterval);
-      alert(data.message);
-
-      document.getElementById("qr-display-card")?.classList.add("hidden");
-      document.getElementById("session-form-card")?.classList.remove("hidden");
-      currentSessionId = null;
+      resetToSessionForm("✅ Đã đóng phiên điểm danh thành công!");
     } else {
       alert("Lỗi đóng phiên: " + data.error);
     }
@@ -418,8 +417,7 @@ async function handleCloseSession() {
   }
 }
 
-// 7. Bộ Đếm Ngược 30 Giây Thời Gian Thực
-// 1. Tự động xin mã QR mới từ Server mỗi khi chuyển bước 30s
+// 8. Tự động lấy Mã QR xoay vòng mới từ Server mỗi 30s
 async function refreshQRCodeFromServer() {
   if (!currentSessionId) return;
 
@@ -437,28 +435,17 @@ async function refreshQRCodeFromServer() {
     const data = await res.json();
 
     if (data.success) {
-      // Cập nhật Mã Chữ 8 ký tự dự phòng
-      const textCodeElem = document.getElementById("qr-text-code");
-      if (textCodeElem) textCodeElem.textContent = data.rawQR;
-
-      // Vẽ lại Ảnh Mã QR Code mới
-      const qrContainer = document.getElementById("qrcode-box");
-      if (qrContainer && typeof QRCode !== "undefined") {
-        qrContainer.innerHTML = "";
-        new QRCode(qrContainer, {
-          text: data.qrCode, // Chuỗi dạng SESSION_ID|RAW_QR
-          width: 220,
-          height: 220,
-          correctLevel: QRCode.CorrectLevel.M
-        });
-      }
+      renderQRAndText(data.sessionId, data.rawQR);
+    } else {
+      // Nếu Server báo phiên đã bị đóng/hết hạn trễ tối đa -> Tự chuyển giao diện
+      resetToSessionForm("🔔 Phiên điểm danh đã kết thúc thời gian cho phép!");
     }
   } catch (err) {
     console.error("Lỗi cập nhật mã QR:", err);
   }
 }
 
-// 2. Bộ đếm ngược 30s thời gian thực đồng bộ tuyệt đối
+// 9. Bộ Đếm Ngược 30 Giây Thời Gian Thực
 function startQRCountdown() {
   if (qrTimerInterval) clearInterval(qrTimerInterval);
 
@@ -466,20 +453,19 @@ function startQRCountdown() {
 
   function syncTimer() {
     const nowSeconds = Math.floor(new Date().getTime() / 1000);
-    const currentStep = Math.floor(nowSeconds / 30); // Bước chu kỳ 30s
+    const currentStep = Math.floor(nowSeconds / 30);
     const secondsRemaining = 30 - (nowSeconds % 30);
 
     const countdownElem = document.getElementById("qr-countdown");
     if (countdownElem) countdownElem.textContent = secondsRemaining;
 
-    // Ngay khi bước thời gian chuyển sang chu kỳ 30s mới -> Lấy và đổi ảnh QR ngay lập tức!
     if (currentStep !== lastStep) {
       lastStep = currentStep;
       refreshQRCodeFromServer();
     }
   }
 
-  syncTimer(); // Chạy ngay lập tức khi vừa bấm Start
+  syncTimer();
   qrTimerInterval = setInterval(syncTimer, 1000);
 }
 
