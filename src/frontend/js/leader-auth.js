@@ -82,7 +82,7 @@ function setupLeaderAuthEvents() {
   // 3. Làm mới danh sách Nhóm
   document.getElementById("btn-refresh-groups")?.addEventListener("click", loadLeaderGroups);
 
-  // 4. Reset Thiết Bị Cho Thành Viên (Chức năng mới dành cho Leader)
+  // 4. Reset Thiết Bị Cho Thành Viên (Liên kết thiết bị mới)
   document.getElementById("btn-leader-reset-device")?.addEventListener("click", async () => {
     const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
     const userId = document.getElementById("leader-reset-user-id")?.value.trim().toUpperCase();
@@ -90,7 +90,7 @@ function setupLeaderAuthEvents() {
     if (!leaderEmail) return alert("Vui lòng đăng nhập tài khoản Leader trước!");
     if (!userId) return alert("Vui lòng nhập Mã thành viên cần Reset!");
 
-    if (!confirm(`Bạn có chắc muốn Reset thiết bị và cấp mã kích hoạt mới cho thành viên ${userId}?`)) return;
+    if (!confirm(`Bạn có chắc muốn Reset thiết bị cho thành viên ${userId}? Lần đăng nhập tiếp theo của học sinh trên máy mới sẽ tự động liên kết.`)) return;
 
     try {
       const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
@@ -109,9 +109,9 @@ function setupLeaderAuthEvents() {
         const codeElem = document.getElementById("leader-new-code");
         
         if (resultCard) resultCard.classList.remove("hidden");
-        if (codeElem) codeElem.textContent = data.newActivationCode;
+        if (codeElem) codeElem.textContent = data.message || `Đã reset thiết bị cho ${userId}`;
         
-        alert(data.message);
+        alert(data.message || `Đã reset thiết bị thành công!`);
       } else {
         alert("Lỗi reset thiết bị: " + data.error);
       }
@@ -120,6 +120,7 @@ function setupLeaderAuthEvents() {
     }
   });
 }
+
 // 1. Tải Danh Sách Nhóm & Đổ vào Dropdown + Render Cards
 async function loadLeaderGroups() {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
@@ -164,7 +165,7 @@ function renderLeaderGroups(groups) {
   if (!container) return;
 
   if (!groups || groups.length === 0) {
-    container.innerHTML = '<p class="sub-text">Bạn chưa phụ trách nhóm nào. Hãy sang tab "Nhập/Xuất Data" để Upload danh sách mới!</p>';
+    container.innerHTML = '<p class="sub-text">Bạn chưa phụ trách nhóm nào. Hãy sang tab "Upload Data" để Upload danh sách mới!</p>';
     return;
   }
 
@@ -180,7 +181,7 @@ function renderLeaderGroups(groups) {
         <p class="sub-text">Đang tải thành viên...</p>
       </div>
 
-      <!-- Nút Thao Tác Trực Tiếp Bổ Sung -->
+      <!-- Nút Thao Tác Trực Tiếp -->
       <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
         <button onclick="quickStartSession('${g.groupId}')" class="btn primary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">🚀 Điểm Danh Nhanh</button>
         <button onclick="toggleGroupMembers('${g.groupId}')" class="btn secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">👁️ Xem Thành Viên</button>
@@ -205,7 +206,7 @@ function quickStartSession(groupId) {
   document.getElementById("tab-session")?.classList.remove("hidden");
 }
 
-// 3. Thao Tác: Bật/Tắt Hiển Thị Danh Sách Thành Viên
+// 3. Thao Tác: Bật/Tắt Hiển Thị Danh Sách Thành Viên & Thống Kê Đúng/Trễ
 async function toggleGroupMembers(groupId) {
   const box = document.getElementById(`members-box-${groupId}`);
   if (!box) return;
@@ -254,12 +255,12 @@ async function toggleGroupMembers(groupId) {
                 <tr>
                   <td><strong>${m.userId}</strong></td>
                   <td>${m.fullName}</td>
-                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.weekOnTime}</td>
-                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.weekLate}</td>
-                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.monthOnTime}</td>
-                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.monthLate}</td>
-                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.yearOnTime}</td>
-                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.yearLate}</td>
+                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.weekOnTime || 0}</td>
+                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.weekLate || 0}</td>
+                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.monthOnTime || 0}</td>
+                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.monthLate || 0}</td>
+                  <td style="text-align: center; color: var(--success); font-weight: bold;">${m.yearOnTime || 0}</td>
+                  <td style="text-align: center; color: var(--danger); font-weight: bold;">${m.yearLate || 0}</td>
                 </tr>
               `).join("")}
             </tbody>
@@ -323,13 +324,13 @@ async function confirmDeleteGroup(groupId) {
     });
     const data = await res.json();
     alert(data.message);
-    loadLeaderGroups(); // Refresh lại giao diện
+    loadLeaderGroups();
   } catch (err) {
     alert("Lỗi xóa nhóm: " + err.toString());
   }
 }
 
-// 6. Xử lý Upload Data & Đăng ký (Giữ nguyên)
+// 6. Xử lý Upload Data Excel
 function setupUploadTabEvents() {
   document.getElementById("btn-download-template")?.addEventListener("click", () => {
     const templateData = [
@@ -388,9 +389,9 @@ function setupUploadTabEvents() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Đã xử lý ${data.totalUploaded} thành viên (${data.newCreated} mã kích hoạt mới được sinh).`);
-        lastUploadResult = data.resultCodes;
-        renderUploadResultTable(data.resultCodes);
+        alert(`Đã nạp ${data.totalUploaded} thành viên vào hệ thống thành công.`);
+        lastUploadResult = data.resultCodes || [];
+        renderUploadResultTable(lastUploadResult);
         loadLeaderGroups();
       } else {
         alert("Lỗi upload: " + data.error);
@@ -406,13 +407,12 @@ function setupUploadTabEvents() {
       "Mã Người": item.userId,
       "Họ Tên": item.fullName,
       "Mã Nhóm": item.groupId,
-      "Mã Kích Hoạt (8 Ký Tự)": item.activationCode,
       "Trạng Thái": item.status
     }));
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Danh_Sach_Ma_Kich_Hoat");
-    XLSX.writeFile(wb, "Danh_Sach_Ma_Kich_Hoat.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Danh_Sach_Thanh_Vien");
+    XLSX.writeFile(wb, "Danh_Sach_Thanh_Vien.xlsx");
   });
 }
 
@@ -424,7 +424,7 @@ function renderUploadResultTable(list) {
       <td><strong>${item.userId}</strong></td>
       <td>${item.fullName}</td>
       <td>${item.groupId}</td>
-      <td style="color: var(--primary); font-weight: bold;">${item.activationCode}</td>
+      <td style="color: var(--success); font-weight: bold;">${item.status || "Thành công"}</td>
     </tr>
   `).join("");
   document.getElementById("upload-result-card")?.classList.remove("hidden");
