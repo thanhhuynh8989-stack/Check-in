@@ -228,30 +228,38 @@ function submitCheckinRequest(rawQrCode) {
     payloadCode = parts[1].trim();
   }
 
-  const gpsOptions = {
-    enableHighAccuracy: true,
-    timeout: 8000,
-    maximumAge: 5000 // Cache vị trí 5s gần nhất để tránh kích hoạt GPS phần cứng liên tục
-  };
+  console.log("📲 [MEMBER CHECKIN SENDING]", {
+    targetSessionId: targetSessionId,
+    rawQrInput: rawQrCode,
+    payloadCode: payloadCode
+  });
+
+  const gpsOptions = { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 };
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
       showLoading(true);
       try {
+        const payload = {
+          action: "submitCheckin",
+          token: currentUser.token,
+          sessionId: targetSessionId,
+          qrCode: payloadCode,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy
+        };
+
+        console.log("📤 [MEMBER FETCH PAYLOAD]:", payload);
+
         const res = await fetch(WEB_APP_URL, {
           method: "POST",
-          body: JSON.stringify({
-            action: "submitCheckin",
-            token: currentUser.token,
-            sessionId: targetSessionId,
-            qrCode: payloadCode,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy
-          })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
         
+        console.log("📥 [MEMBER CHECKIN RESPONSE]:", data);
+
         if (data.success) {
           showResultCard(data);
           saveHistory(data);
@@ -260,6 +268,7 @@ function submitCheckinRequest(rawQrCode) {
           resumeScanningWithDelay(3000);
         }
       } catch (err) {
+        console.error("❌ [MEMBER CHECKIN ERROR]:", err);
         alert("Lỗi kết nối máy chủ!");
         resumeScanningWithDelay(3000);
       } finally {
@@ -269,14 +278,7 @@ function submitCheckinRequest(rawQrCode) {
     },
     (err) => {
       isRequestingGPS = false;
-      let errMsg = "Vui lòng bật quyền GPS trên trình duyệt để điểm danh!";
-      if (err.code === err.TIMEOUT) {
-        errMsg = "Quá thời gian lấy vị trí GPS. Vui lòng di chuyển ra nơi thoáng hoặc thử lại!";
-      } else if (err.code === err.POSITION_UNAVAILABLE) {
-        errMsg = "Không thể xác định vị trí hiện tại. Hãy kiểm tra kết nối mạng/GPS!";
-      }
-
-      alert(errMsg);
+      alert("Vui lòng bật quyền GPS trên trình duyệt để điểm danh!");
       resumeScanningWithDelay(3000);
     },
     gpsOptions
@@ -367,40 +369,44 @@ async function handleLeaderStartSession() {
   }, { enableHighAccuracy: true });
 }
 
+let configSecretKey = "CHECKIN_SECRET_KEY_2026"; // Fallback Secret Key
+
+// 1. Nhận response từ Server khi tạo phiên thành công
 async function sendStartSessionRequest(payload) {
   try {
     const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+    console.log("🚀 [LEADER] Gửi request tạo phiên mới tới Server...", payload);
+    
     const res = await fetch(apiUrl, {
       method: "POST",
       body: JSON.stringify({ action: "startSession", ...payload })
     });
     const data = await res.json();
 
+    console.log("📥 [LEADER] Nhận phản hồi từ Server:", data);
+
     if (data.success) {
       currentSessionId = data.sessionId;
       currentSessionSecret = data.sessionSecret;
+      if (data.secretKey) configSecretKey = data.secretKey;
       
-      // ÉP KIỂU SỐ NGUYÊN CHẮC CHẮN TRÁNH LỖI NaNs
       serverStartMs = Number(data.serverStartMs);
       localStartPerfMs = performance.now();
 
-      if (isNaN(serverStartMs)) {
-        serverStartMs = new Date().getTime(); // Fallback nếu gặp sự cố
-      }
+      console.log(`✅ [LEADER SESSION READY] SessionID: ${currentSessionId} | ServerStartMs: ${serverStartMs}`);
 
       localStorage.setItem("CURRENT_SESSION_ID", currentSessionId);
-
       alert("Khởi tạo phiên thành công!");
 
       document.getElementById("session-form-card")?.classList.add("hidden");
       document.getElementById("qr-display-card")?.classList.remove("hidden");
 
-      // Bắt đầu bộ đếm Offline
       startAnchorBasedQRCountdown();
     } else {
       alert("Lỗi tạo phiên: " + data.error);
     }
   } catch (err) {
+    console.error("❌ [LEADER ERROR] Không thể tạo phiên:", err);
     alert("Lỗi kết nối máy chủ: " + err.toString());
   }
 }
@@ -478,18 +484,28 @@ function generateAnchorQR(secret, stepOffset) {
 
   const elapsedMs = performance.now() - localStartPerfMs;
   const currentEstimatedServerMs = serverStartMs + elapsedMs;
-
   const timeStep = Math.floor(currentEstimatedServerMs / 30000) + (stepOffset || 0);
+
   const rawString = secret + "_" + timeStep;
 
-  // Hash đơn giản chuẩn hóa 8 ký tự Hex
-  let hash = 0;
-  for (let i = 0; i < rawString.length; i++) {
-    hash = ((hash << 5) - hash) + rawString.charCodeAt(i);
-    hash |= 0;
+  // Dùng CryptoJS băm HMAC-SHA256 giống hệt Utilities.computeHmacSha256Signature của Apps Script
+  let code = "";
+  if (typeof CryptoJS !== "undefined") {
+    const hash = CryptoJS.HmacSHA256(rawString, configSecretKey);
+    const base64 = CryptoJS.enc.Base64.stringify(hash);
+    code = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '').substring(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, 'X');
+  } else {
+    // Fallback nếu thiếu CryptoJS
+    let hash = 0;
+    for (let i = 0; i < rawString.length; i++) {
+      hash = ((hash << 5) - hash) + rawString.charCodeAt(i);
+      hash |= 0;
+    }
+    code = Math.abs(hash).toString(16).toUpperCase().padStart(8, 'X').substring(0, 8);
   }
-  const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, 'X');
-  return hex.substring(0, 8);
+
+  console.log(`🔑 [LEADER GEN QR] Elapsed: ${Math.round(elapsedMs)}ms | Step: ${timeStep} | Raw: "${rawString}" -> Code: ${code}`);
+  return code;
 }
 
 // 9. Bộ Đếm Ngược 30s Offline Dựa Trên Mốc Neo (Không Tốn Request)
@@ -507,12 +523,8 @@ function startAnchorBasedQRCountdown() {
     const secondsRemaining = 30 - Math.floor((currentEstimatedServerMs % 30000) / 1000);
 
     const countdownElem = document.getElementById("qr-countdown");
-    if (countdownElem) {
-      // Đảm bảo không bao giờ hiển thị NaNs
-      countdownElem.textContent = isNaN(secondsRemaining) ? "30" : secondsRemaining;
-    }
+    if (countdownElem) countdownElem.textContent = isNaN(secondsRemaining) ? "30" : secondsRemaining;
 
-    // Đổi ảnh QR & Mã chữ mỗi khi nhảy sang bước 30s mới
     if (currentStep !== lastStep) {
       lastStep = currentStep;
       const rawQR = generateAnchorQR(currentSessionSecret, 0);
