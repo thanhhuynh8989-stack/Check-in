@@ -212,12 +212,25 @@ function submitCheckinRequest(rawQrCode) {
     return;
   }
 
-  // Lấy UserId từ đối tượng đăng nhập hiện tại
-  const memberUserId = currentUser ? currentUser.userId : localStorage.getItem("CHECKIN_USER_ID");
+  // --- LẤY MÃ THÀNH VIÊN (USERID) VỚI CƠ CHẾ FALLBACK 3 LỚP ---
+  let memberUserId = "";
+  if (currentUser && currentUser.userId) {
+    memberUserId = currentUser.userId;
+  } else {
+    memberUserId = localStorage.getItem("CHECKIN_USER_ID") || "";
+  }
+
+  // Nếu vẫn rỗng, nhắc người dùng nhập thủ công 1 lần để lưu Session
   if (!memberUserId) {
-    alert("Vui lòng kích hoạt/xác nhận Mã NV/HS trước khi điểm danh!");
-    resumeScanningWithDelay(2000);
-    return;
+    memberUserId = prompt("Vui lòng nhập Mã người dùng (Mã NV/HS) của bạn để tiếp tục:");
+    if (memberUserId) {
+      memberUserId = memberUserId.trim().toUpperCase();
+      localStorage.setItem("CHECKIN_USER_ID", memberUserId);
+    } else {
+      alert("Bạn chưa cung cấp Mã thành viên!");
+      resumeScanningWithDelay(2000);
+      return;
+    }
   }
 
   isRequestingGPS = true;
@@ -229,17 +242,18 @@ function submitCheckinRequest(rawQrCode) {
   let targetSessionId = localStorage.getItem("CURRENT_SESSION_ID") || "";
   let payloadCode = rawQrCode.trim();
 
-  // Bóc tách sessionId nếu chuỗi QR chứa dạng "SESS_1793849...|A1B2C3D4"
+  // Bóc tách sessionId nếu mã QR chứa dấu | (Dạng: SESS_xxxx|TOTP)
   if (payloadCode.includes("|")) {
     const parts = payloadCode.split("|");
     targetSessionId = parts[0].trim();
     payloadCode = parts[1].trim();
   }
 
-  console.log("%c📤 [CLIENT SENDING CHECKIN REQUEST]", "color: #1a73e8; font-weight: bold; font-size: 13px;");
-  console.log("• UserId:", memberUserId);
-  console.log("• SessionID:", targetSessionId);
-  console.log("• QR Code:", payloadCode);
+  console.log("%c📤 [SUBMIT CHECKIN PAYLOAD]", "color: #1a73e8; font-weight: bold;", {
+    userId: memberUserId,
+    sessionId: targetSessionId,
+    qrCode: payloadCode
+  });
 
   const gpsOptions = { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 };
 
@@ -247,7 +261,6 @@ function submitCheckinRequest(rawQrCode) {
     async (pos) => {
       showLoading(true);
       try {
-        // ĐÓNG GÓI PAYLOAD TRUYỀN ĐẦY ĐỦ 100% CÁC BIẾN CHO BACKEND
         const payload = {
           action: "submitCheckin",
           userId: memberUserId,
@@ -259,28 +272,22 @@ function submitCheckinRequest(rawQrCode) {
           accuracy: pos.coords.accuracy
         };
 
-        console.log("📦 [CLIENT FETCH PAYLOAD]:", payload);
-
         const res = await fetch(WEB_APP_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify(payload)
         });
         const data = await res.json();
-        
-        console.log("%c📥 [SERVER RESPONSE RECEIVED]", "color: #34a853; font-weight: bold; font-size: 13px;", data);
 
         if (data.success) {
           showResultCard(data);
           saveHistory(data);
         } else {
-          console.warn("⚠️ Điểm danh bị từ chối:", data.error);
           alert("Điểm danh thất bại: " + data.error);
           resumeScanningWithDelay(3000);
         }
       } catch (err) {
-        console.error("❌ Lỗi kết nối gửi điểm danh:", err);
-        alert("Lỗi kết nối máy chủ!");
+        alert("Lỗi kết nối máy chủ: " + err.toString());
         resumeScanningWithDelay(3000);
       } finally {
         showLoading(false);
@@ -289,8 +296,7 @@ function submitCheckinRequest(rawQrCode) {
     },
     (err) => {
       isRequestingGPS = false;
-      console.error("❌ Lỗi GPS:", err);
-      alert("Vui lòng bật quyền GPS trên trình duyệt để điểm danh!");
+      alert("Vui lòng bật quyền định vị GPS để điểm danh!");
       resumeScanningWithDelay(3000);
     },
     gpsOptions
