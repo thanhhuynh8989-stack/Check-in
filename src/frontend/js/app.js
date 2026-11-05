@@ -228,11 +228,10 @@ function submitCheckinRequest(rawQrCode) {
     payloadCode = parts[1].trim();
   }
 
-  console.log("📲 [MEMBER CHECKIN SENDING]", {
-    targetSessionId: targetSessionId,
-    rawQrInput: rawQrCode,
-    payloadCode: payloadCode
-  });
+  console.log("%c📤 [CLIENT SENDING CHECKIN REQUEST]", "color: #1a73e8; font-weight: bold; font-size: 13px;");
+  console.log("• SessionID:", targetSessionId);
+  console.log("• Mã QR Quét Được:", rawQrCode);
+  console.log("• Payload Mã QR Gửi Đi:", payloadCode);
 
   const gpsOptions = { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 };
 
@@ -242,7 +241,7 @@ function submitCheckinRequest(rawQrCode) {
       try {
         const payload = {
           action: "submitCheckin",
-          token: currentUser.token,
+          token: currentUser ? currentUser.token : "",
           sessionId: targetSessionId,
           qrCode: payloadCode,
           lat: pos.coords.latitude,
@@ -250,7 +249,7 @@ function submitCheckinRequest(rawQrCode) {
           accuracy: pos.coords.accuracy
         };
 
-        console.log("📤 [MEMBER FETCH PAYLOAD]:", payload);
+        console.log("📦 [CLIENT FETCH PAYLOAD]:", payload);
 
         const res = await fetch(WEB_APP_URL, {
           method: "POST",
@@ -258,17 +257,18 @@ function submitCheckinRequest(rawQrCode) {
         });
         const data = await res.json();
         
-        console.log("📥 [MEMBER CHECKIN RESPONSE]:", data);
+        console.log("%c📥 [SERVER RESPONSE RECEIVED]", "color: #34a853; font-weight: bold; font-size: 13px;", data);
 
         if (data.success) {
           showResultCard(data);
           saveHistory(data);
         } else {
+          console.warn("⚠️ Điểm danh bị từ chối:", data.error);
           alert("Điểm danh thất bại: " + data.error);
           resumeScanningWithDelay(3000);
         }
       } catch (err) {
-        console.error("❌ [MEMBER CHECKIN ERROR]:", err);
+        console.error("❌ Lỗi kết nối gửi điểm danh:", err);
         alert("Lỗi kết nối máy chủ!");
         resumeScanningWithDelay(3000);
       } finally {
@@ -278,6 +278,7 @@ function submitCheckinRequest(rawQrCode) {
     },
     (err) => {
       isRequestingGPS = false;
+      console.error("❌ Lỗi GPS:", err);
       alert("Vui lòng bật quyền GPS trên trình duyệt để điểm danh!");
       resumeScanningWithDelay(3000);
     },
