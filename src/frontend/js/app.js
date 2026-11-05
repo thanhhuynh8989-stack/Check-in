@@ -7,7 +7,10 @@ let checkinHistory = JSON.parse(localStorage.getItem("CHECKIN_HISTORY") || "[]")
 let videoStream = null;
 let scanning = false;
 let currentSessionId = null;
-let currentRawQR = null;
+let currentSessionSecret = null;
+let serverStartMs = 0;
+let localStartPerfMs = 0;
+let lastStep = -1;
 let qrTimerInterval = null;
 let isRequestingGPS = false; // Biến cờ ngăn chặn gọi GPS chồng chéo (Throttle)
 
@@ -114,7 +117,7 @@ function toggleLocationInput() {
   }
 }
 
-// 1. Liên Kết Máy Tự Động Theo Mã NV/HS (Phương Án 1 - Bỏ Mã Kích Hoạt 8 Ký Tự)
+// 1. Liên Kết Máy Tự Động Theo Mã NV/HS
 async function handleRegister() {
   const userIdElem = document.getElementById("reg-user-id");
   const userId = userIdElem ? userIdElem.value.trim().toUpperCase() : "";
@@ -367,29 +370,29 @@ async function handleLeaderStartSession() {
 async function sendStartSessionRequest(payload) {
   try {
     const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
-
     const res = await fetch(apiUrl, {
       method: "POST",
-      redirect: "follow",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ action: "startSession", ...payload })
     });
     const data = await res.json();
 
     if (data.success) {
       currentSessionId = data.sessionId;
-      localStorage.setItem("CURRENT_SESSION_ID", currentSessionId);
+      currentSessionSecret = data.sessionSecret;
+      
+      // NEO THỜI GIAN: Lưu mốc giờ Server và mốc performance nội bộ
+      serverStartMs = data.serverStartMs;
+      localStartPerfMs = performance.now();
 
-      const fullQR = data.qrCode;
-      currentRawQR = fullQR.includes("|") ? fullQR.split("|")[1] : fullQR;
+      localStorage.setItem("CURRENT_SESSION_ID", currentSessionId);
 
       alert("Khởi tạo phiên thành công!");
 
       document.getElementById("session-form-card")?.classList.add("hidden");
       document.getElementById("qr-display-card")?.classList.remove("hidden");
 
-      renderQRAndText(currentSessionId, currentRawQR);
-      startQRCountdown();
+      // Bắt đầu đếm bước 30s hoàn toàn Offline dựa trên Mốc Neo Server
+      startAnchorBasedQRCountdown();
     } else {
       alert("Lỗi tạo phiên: " + data.error);
     }
@@ -427,7 +430,10 @@ function resetToSessionForm(message) {
   document.getElementById("session-form-card")?.classList.remove("hidden");
   
   currentSessionId = null;
-  currentRawQR = null;
+  currentSessionSecret = null;
+  serverStartMs = 0;
+  localStartPerfMs = 0;
+  lastStep = -1;
 }
 
 // 7. Leader Đóng Phiên Thủ Công
@@ -462,55 +468,50 @@ async function handleCloseSession() {
   }
 }
 
-// 8. Tự động lấy Mã QR xoay vòng mới từ Server mỗi 30s
-async function refreshQRCodeFromServer() {
-  if (!currentSessionId) return;
+// 8. Thuật toán sinh Mã QR 8 ký tự Offline dựa trên Mốc Neo Server
+function generateAnchorQR(secret, stepOffset) {
+  const elapsedMs = performance.now() - localStartPerfMs;
+  const currentEstimatedServerMs = serverStartMs + elapsedMs;
 
-  try {
-    const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
-    const res = await fetch(apiUrl, {
-      method: "POST",
-      redirect: "follow",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        action: "getLatestQR",
-        sessionId: currentSessionId
-      })
-    });
-    const data = await res.json();
+  const timeStep = Math.floor(currentEstimatedServerMs / 30000) + (stepOffset || 0);
+  const rawString = secret + "_" + timeStep;
 
-    if (data.success) {
-      renderQRAndText(data.sessionId, data.rawQR);
-    } else {
-      resetToSessionForm("🔔 Phiên điểm danh đã kết thúc thời gian cho phép!");
-    }
-  } catch (err) {
-    console.error("Lỗi cập nhật mã QR:", err);
+  let hash = 0;
+  for (let i = 0; i < rawString.length; i++) {
+    hash = ((hash << 5) - hash) + rawString.charCodeAt(i);
+    hash |= 0;
   }
+  const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, 'X');
+  return hex.substring(0, 8);
 }
 
-// 9. Bộ Đếm Ngược 30 Giây Thời Gian Thực Đồng Bộ
-function startQRCountdown() {
+// 9. Bộ Đếm Ngược 30s Offline Dựa Trên Mốc Neo (Không Tốn Request)
+function startAnchorBasedQRCountdown() {
   if (qrTimerInterval) clearInterval(qrTimerInterval);
+  lastStep = -1;
 
-  let lastStep = -1;
+  function tick() {
+    if (!currentSessionId || !currentSessionSecret) return;
 
-  function syncTimer() {
-    const nowSeconds = Math.floor(new Date().getTime() / 1000);
-    const currentStep = Math.floor(nowSeconds / 30);
-    const secondsRemaining = 30 - (nowSeconds % 30);
+    const elapsedMs = performance.now() - localStartPerfMs;
+    const currentEstimatedServerMs = serverStartMs + elapsedMs;
+
+    const currentStep = Math.floor(currentEstimatedServerMs / 30000);
+    const secondsRemaining = 30 - Math.floor((currentEstimatedServerMs % 30000) / 1000);
 
     const countdownElem = document.getElementById("qr-countdown");
     if (countdownElem) countdownElem.textContent = secondsRemaining;
 
+    // Tự động sinh và hiển thị QR mới ngay tại Client khi nhảy sang bước 30s mới
     if (currentStep !== lastStep) {
       lastStep = currentStep;
-      refreshQRCodeFromServer();
+      const rawQR = generateAnchorQR(currentSessionSecret, 0);
+      renderQRAndText(currentSessionId, rawQR);
     }
   }
 
-  syncTimer();
-  qrTimerInterval = setInterval(syncTimer, 1000);
+  tick();
+  qrTimerInterval = setInterval(tick, 1000);
 }
 
 function showLoading(show) {
