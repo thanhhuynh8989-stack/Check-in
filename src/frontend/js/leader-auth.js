@@ -192,6 +192,7 @@ function renderLeaderGroups(groups) {
   `).join("");
 }
 
+localStorage.setItem("CHECKIN_LEADER_SESSION", emailLeader);
 // 2. Thao Tác: Điểm Danh Nhanh Từng Nhóm
 function quickStartSession(groupId) {
   const selectElem = document.getElementById("group-id");
@@ -232,7 +233,11 @@ async function toggleGroupMembers(groupId) {
     console.log("🚀 [FETCH MEMBERS] Gửi yêu cầu với Email:", leaderEmail, "| Group:", groupId);
     const res = await fetch(apiUrl, {
       method: "POST",
-      body: JSON.stringify({ action: "getGroupMembers", email: leaderEmail, groupId: groupId })
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // Dùng text/plain để tránh lỗi CORS với GAS
+      body: JSON.stringify({
+        action: "getGroupMembers",
+        email: leaderEmail,
+        groupId: groupId })
     });
     const data = await res.json();
     console.log("📥 [MEMBERS RESPONSE]:", data);
