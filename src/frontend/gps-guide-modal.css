@@ -1,0 +1,153 @@
+/* Custom Bottom Sheet Modal Overlay */
+.gps-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.gps-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Bottom Sheet Container */
+.gps-bottom-sheet {
+  width: 100%;
+  max-width: 500px;
+  background: #ffffff;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding: 20px 24px 30px 24px;
+  box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.1, 0.9, 0.2, 1);
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.gps-modal-overlay.active .gps-bottom-sheet {
+  transform: translateY(0);
+}
+
+/* Drag Handle Bar */
+.gps-sheet-handle {
+  width: 40px;
+  height: 5px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  margin: 0 auto 15px auto;
+}
+
+/* Header & Title */
+.gps-sheet-header {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.gps-sheet-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #d93025;
+  margin: 0 0 6px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.gps-sheet-subtitle {
+  font-size: 0.88rem;
+  color: #5f6368;
+  margin: 0;
+}
+
+/* Steps List */
+.gps-steps-container {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  border: 1px solid #e8eaed;
+}
+
+.gps-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.gps-step-item:last-child {
+  margin-bottom: 0;
+}
+
+.gps-step-num {
+  background: #1a73e8;
+  color: #ffffff;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.gps-step-text {
+  font-size: 0.88rem;
+  color: #202124;
+  line-height: 1.45;
+}
+
+.gps-step-text strong {
+  color: #1a73e8;
+}
+
+/* Action Buttons */
+.gps-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gps-btn-primary {
+  width: 100%;
+  padding: 12px 0;
+  background: #1a73e8;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.gps-btn-primary:active {
+  background: #1557b0;
+}
+
+.gps-btn-secondary {
+  width: 100%;
+  padding: 10px 0;
+  background: transparent;
+  color: #5f6368;
+  border: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+}
