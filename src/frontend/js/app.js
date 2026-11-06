@@ -18,12 +18,16 @@ document.addEventListener("DOMContentLoaded", () => {
   initApp();
   setupEventListeners();
 
-  // Kiểm tra ngầm quyền GPS ngay khi vào trang web
-  GPSGuideModal.checkGPSPermission();
+  // Kiểm tra ngầm quyền GPS ngay khi vào trang web (nếu có Module)
+  if (typeof GPSGuideModal !== "undefined") {
+    GPSGuideModal.checkGPSPermission();
+  }
+
   // Đăng ký callback thử lại khi người dùng bấm nút trên Bottom Sheet
   window.onGPSRetryCallback = () => {
     if (typeof startCamera === "function") startCamera();
-});
+  };
+}); // <-- Đã bổ sung }); đóng sự kiện DOMContentLoaded ở đây
 
 function initApp() {
   if (!currentUser || !currentUser.userId) {
