@@ -1,10 +1,11 @@
 /**
- * sheet-verifier.js - Module Xử Lý Kiểm Tra & Xác Minh Link Google Sheet Cá Nhân
+ * sheet-verifier.js - Module Xử Lý Kiểm Tra & Xác Minh Link Google Sheet Cá Nhân (Thân Thiện UX)
  */
 const SheetVerifier = (() => {
   let isVerified = false;
 
-  // URL Web App mặc định dự phòng nếu chưa khai báo toàn cục
+  // Email Master của hệ thống nhận quyền Editor
+  const MASTER_EMAIL = "thanhhuynh8989@gmail.com";
   const DEFAULT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxhqmMvaMageZgpfCRrjdkPPMJtUWsIU1nkfWYL5J6sSQHpIrdVF1yUgtSKNenb6p7_yQ/exec";
 
   async function verifyCustomSheet(urlInputId, statusElemId) {
@@ -13,8 +14,13 @@ const SheetVerifier = (() => {
     const customSheetUrl = urlElem ? urlElem.value.trim() : "";
 
     if (!customSheetUrl) {
-      alert("Vui lòng dán đường link Google Sheet cá nhân trước khi kiểm tra!");
-      return false;
+      alert("💡 Bạn đang để trống Link Sheet.\nHệ thống sẽ tự động sử dụng Master Sheet chung để lưu dữ liệu điểm danh!");
+      if (statusElem) {
+        statusElem.style.color = "#1a73e8";
+        statusElem.textContent = "ℹ️ Đang sử dụng Master Sheet chung của hệ thống.";
+      }
+      isVerified = true;
+      return true;
     }
 
     if (statusElem) {
@@ -22,7 +28,6 @@ const SheetVerifier = (() => {
       statusElem.textContent = "⏳ Đang kết nối & kiểm tra quyền truy cập...";
     }
 
-    // Ưu tiên lấy URL từ biến toàn cục WEB_APP_URL hoặc window.WEB_APP_URL, nếu không có sẽ lấy DEFAULT_WEB_APP_URL
     let apiUrl = DEFAULT_WEB_APP_URL;
     if (typeof WEB_APP_URL !== "undefined" && WEB_APP_URL) {
       apiUrl = WEB_APP_URL;
@@ -47,24 +52,56 @@ const SheetVerifier = (() => {
           statusElem.style.color = "var(--success, #1e8e3e)";
           statusElem.textContent = `✅ Đã kết nối thành công: "${data.title || 'Sheet cá nhân'}"`;
         }
-        alert("Xác minh Google Sheet cá nhân thành công! Hệ thống có thể ghi dữ liệu điểm danh vào file này.");
+        alert("🎉 Xác minh thành công!\nDữ liệu điểm danh của nhóm bạn từ nay sẽ được lưu trực tiếp vào Sheet cá nhân này.");
         return true;
       } else {
         isVerified = false;
-        if (statusElem) {
-          statusElem.style.color = "var(--danger, #d93025)";
-          statusElem.textContent = `❌ Lỗi: ${data.error}`;
+        
+        // Bắt trường hợp chưa chia sẻ quyền
+        if (data.needShare || data.error?.includes("chưa được cấp quyền")) {
+          const userChoice = confirm(
+            `📋 HƯỚNG DẪN KẾT NỐI SHEET CÁ NHÂN:\n\n` +
+            `Hệ thống chưa có quyền ghi dữ liệu vào File Google Sheet này.\n\n` +
+            `👉 HƯỚNG DẪN BẬT QUYỀN:\n` +
+            `1. Mở file Google Sheet của bạn.\n` +
+            `2. Bấm nút "Chia sẻ" (Share) ở góc phải.\n` +
+            `3. Thêm Email hệ thống: ${MASTER_EMAIL}\n` +
+            `4. Chọn quyền: "Người chỉnh sửa" (Editor) rồi bấm Gửi.\n\n` +
+            `💡 GỢI Ý: Bạn có muốn XÓA TRẮNG ô link này để sử dụng Master Sheet chung thay thế không?`
+          );
+
+          if (userChoice && urlElem) {
+            urlElem.value = "";
+            if (statusElem) {
+              statusElem.style.color = "#1a73e8";
+              statusElem.textContent = "ℹ️ Đã chuyển sang sử dụng Master Sheet chung của hệ thống.";
+            }
+            isVerified = true;
+          } else if (statusElem) {
+            statusElem.style.color = "var(--danger, #d93025)";
+            statusElem.textContent = `⚠️ Cần chia sẻ quyền Editor cho email: ${MASTER_EMAIL}`;
+          }
+        } else {
+          alert("Lỗi kiểm tra Google Sheet: " + data.error);
+          if (statusElem) {
+            statusElem.style.color = "var(--danger, #d93025)";
+            statusElem.textContent = `❌ Lỗi: ${data.error}`;
+          }
         }
-        alert("Không thể kết nối đến Google Sheet cá nhân!\nVui lòng đảm bảo bạn đã Share quyền Chỉnh sửa (Editor) cho Email Master của hệ thống.");
         return false;
       }
     } catch (err) {
       isVerified = false;
+      alert(
+        `📋 HƯỚNG DẪN KẾT NỐI SHEET CÁ NHÂN:\n\n` +
+        `Không thể xác minh quyền truy cập file Google Sheet cá nhân.\n\n` +
+        `Vui lòng kiểm tra chắc chắn bạn đã Chia sẻ (Share) quyền "Người chỉnh sửa" (Editor) cho Email hệ thống: ${MASTER_EMAIL}.\n\n` +
+        `Nếu không thực hiện chia sẻ, bạn hãy xóa trống khung dán link để tự động sử dụng Master Sheet chung!`
+      );
       if (statusElem) {
         statusElem.style.color = "var(--danger, #d93025)";
-        statusElem.textContent = `❌ Lỗi kết nối: ${err.toString()}`;
+        statusElem.textContent = `⚠️ Vui lòng chia sẻ quyền Editor cho: ${MASTER_EMAIL} hoặc để trống.`;
       }
-      alert("Lỗi kiểm tra Google Sheet: " + err.toString());
       return false;
     }
   }
@@ -79,7 +116,6 @@ const SheetVerifier = (() => {
   };
 })();
 
-// Khai báo đối tượng ra môi trường toàn cục window để các file khác dễ dàng gọi tới
 if (typeof window !== "undefined") {
   window.SheetVerifier = SheetVerifier;
 }
