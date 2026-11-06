@@ -147,7 +147,6 @@ async function loadLeaderGroups() {
   }
 }
 
-// Đổ dữ liệu vào Dropdown chọn nhóm ở Tab 1 (Điểm danh)
 function populateGroupSelectDropdown(groups) {
   const selectElem = document.getElementById("group-id");
   if (!selectElem) return;
@@ -162,7 +161,6 @@ function populateGroupSelectDropdown(groups) {
   `).join("");
 }
 
-// Render Các Thẻ Nhóm có ĐẦY ĐỦ NÚT THAO TÁC
 function renderLeaderGroups(groups) {
   const container = document.getElementById("groups-grid-container");
   if (!container) return;
@@ -179,12 +177,10 @@ function renderLeaderGroups(groups) {
         <span class="badge" style="background: #e8f0fe; color: #1a73e8;">Sheet: ${g.customSheetUrl ? 'Riêng' : 'Master'}</span>
       </div>
 
-      <!-- Khung Chứa Danh Sách Thành Viên (Ẩn Mặc Định) -->
       <div id="members-box-${g.groupId}" class="hidden" style="margin: 10px 0; background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #dadce0;">
         <p class="sub-text">Đang tải thành viên...</p>
       </div>
 
-      <!-- Nút Thao Tác Trực Tiếp -->
       <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
         <button onclick="quickStartSession('${g.groupId}')" class="btn primary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">🚀 Điểm Danh Nhanh</button>
         <button onclick="toggleGroupMembers('${g.groupId}')" class="btn secondary" style="width: auto; padding: 6px 12px; font-size: 0.8rem;">👁️ Xem Thành Viên</button>
@@ -195,12 +191,10 @@ function renderLeaderGroups(groups) {
   `).join("");
 }
 
-// 2. Thao Tác: Điểm Danh Nhanh Từng Nhóm
 function quickStartSession(groupId) {
   const selectElem = document.getElementById("group-id");
   if (selectElem) selectElem.value = groupId;
 
-  // Chuyển sang Tab 1
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".tab-content").forEach(c => c.classList.add("hidden"));
   
@@ -209,7 +203,6 @@ function quickStartSession(groupId) {
   document.getElementById("tab-session")?.classList.remove("hidden");
 }
 
-// 3. Thao Tác: Bật/Tắt Hiển Thị Danh Sách Thành Viên & Thống Kê
 async function toggleGroupMembers(groupId) {
   const box = document.getElementById(`members-box-${groupId}`);
   if (!box) return;
@@ -231,7 +224,6 @@ async function toggleGroupMembers(groupId) {
   const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
 
   try {
-    console.log("🚀 [FETCH MEMBERS] Gửi yêu cầu với Email:", leaderEmail, "| Group:", groupId);
     const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -242,7 +234,6 @@ async function toggleGroupMembers(groupId) {
       })
     });
     const data = await res.json();
-    console.log("📥 [MEMBERS RESPONSE]:", data);
 
     if (data.success && data.members) {
       const sum = data.groupSummary || { totalWeekSessions: 0, totalMonthSessions: 0, totalYearSessions: 0 };
@@ -303,7 +294,6 @@ async function toggleGroupMembers(groupId) {
   }
 }
 
-// 4. Thao Tác: Xuất File Excel Kết Quả Điểm Danh Của Nhóm
 async function downloadGroupAttendanceReport(groupId) {
   const leaderEmail = localStorage.getItem("CHECKIN_LEADER_SESSION");
   const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
@@ -339,7 +329,6 @@ async function downloadGroupAttendanceReport(groupId) {
   }
 }
 
-// 5. Thao Tác: Xóa Nhóm
 async function confirmDeleteGroup(groupId) {
   if (!confirm(`Bạn có chắc chắn muốn XÓA nhóm ${groupId}? Thao tác này sẽ bỏ liên kết thành viên khỏi nhóm.`)) return;
 
@@ -360,7 +349,6 @@ async function confirmDeleteGroup(groupId) {
   }
 }
 
-// 6. Xử lý Upload Data Excel
 function setupUploadTabEvents() {
   document.getElementById("btn-download-template")?.addEventListener("click", () => {
     const templateData = [
@@ -461,44 +449,20 @@ function renderUploadResultTable(list) {
   document.getElementById("upload-result-card")?.classList.remove("hidden");
 }
 
+/**
+ * CẬP NHẬT TRANG ĐĂNG KÝ LEADER: ĐÃ TÍCH HỢP GỌI MODULE ĐĂNG KÝ EDU OTP VÀ VERIFY SHEET
+ */
 function setupRegisterPageEvents() {
+  // 1. Gọi Module kiểm tra Link Sheet cá nhân
   document.getElementById("btn-verify-sheet")?.addEventListener("click", async () => {
-    const customSheetUrl = document.getElementById("sheet-url")?.value.trim();
-    const statusText = document.getElementById("sheet-verify-status");
-
-    if (!customSheetUrl) return alert("Vui lòng dán Link Google Sheet riêng trước!");
-
-    if (statusText) statusText.textContent = "⏳ Đang kiểm tra...";
-
-    try {
-      const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ action: "verifyCustomSheet", customSheetUrl: customSheetUrl })
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        isSheetVerified = true;
-        if (statusText) {
-          statusText.style.color = "var(--success)";
-          statusText.textContent = `✅ Kết nối thành công: "${data.title}"`;
-        }
-        alert("Kết nối Google Sheet thành công!");
-      } else {
-        isSheetVerified = false;
-        if (statusText) {
-          statusText.style.color = "var(--danger)";
-          statusText.textContent = `❌ Lỗi: ${data.error}`;
-        }
-        alert("Không thể truy cập Google Sheet riêng!");
-      }
-    } catch (err) {
-      alert("Lỗi kiểm tra Sheet: " + err.toString());
+    if (typeof SheetVerifier !== "undefined") {
+      await SheetVerifier.verifyCustomSheet("sheet-url", "sheet-verify-status");
+    } else {
+      alert("Module SheetVerifier chưa được tải!");
     }
   });
 
+  // 2. Xử lý nút Đăng Ký Leader
   document.getElementById("btn-register-leader")?.addEventListener("click", async () => {
     const fullName = document.getElementById("leader-name")?.value.trim();
     const email = document.getElementById("leader-email")?.value.trim();
@@ -510,6 +474,25 @@ function setupRegisterPageEvents() {
     if (pass.length < 6) return alert("Mật khẩu tối thiểu 6 ký tự!");
     if (pass !== passConfirm) return alert("Mật khẩu xác nhận không khớp!");
 
+    const formData = {
+      fullName: fullName,
+      email: email,
+      password: pass,
+      customSheetUrl: customSheetUrl
+    };
+
+    // Nếu có Module Đăng Ký Tự Động Edu Email OTP -> Gọi module xử lý
+    if (typeof LeaderAutoAuth !== "undefined") {
+      const result = await LeaderAutoAuth.handleAutoRegisterFlow(formData);
+      if (result.handled) {
+        if (result.success) {
+          window.location.href = "leader.html";
+        }
+        return;
+      }
+    }
+
+    // Fallback: Nếu là đăng ký bình thường
     try {
       const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
       const res = await fetch(apiUrl, {
@@ -517,10 +500,7 @@ function setupRegisterPageEvents() {
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
           action: "registerLeader",
-          fullName: fullName,
-          email: email,
-          password: pass,
-          customSheetUrl: customSheetUrl
+          ...formData
         })
       });
       const data = await res.json();
