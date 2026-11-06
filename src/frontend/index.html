@@ -6,6 +6,8 @@
   <title>Hệ Thống Điểm Danh Trực tuyến</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <!-- 🆕 1. Nhúng CSS Bottom Sheet (Đặt ở thẻ <head>) -->
+  <link rel="stylesheet" href="gps-guide-modal.css">
 </head>
 <body>
   <div class="app-container">
@@ -107,6 +109,8 @@
 
   </div>
 
+  <!-- 🆕 2. Nhúng JS Module (Đặt cuối <body>, NGAY TRƯỚC file app.js) -->
+  <script src="gps-guide-modal.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
