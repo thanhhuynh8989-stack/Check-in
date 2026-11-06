@@ -4,6 +4,9 @@
 const SheetVerifier = (() => {
   let isVerified = false;
 
+  // URL Web App mặc định dự phòng nếu chưa khai báo toàn cục
+  const DEFAULT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxhqmMvaMageZgpfCRrjdkPPMJtUWsIU1nkfWYL5J6sSQHpIrdVF1yUgtSKNenb6p7_yQ/exec";
+
   async function verifyCustomSheet(urlInputId, statusElemId) {
     const urlElem = document.getElementById(urlInputId);
     const statusElem = document.getElementById(statusElemId);
@@ -19,7 +22,13 @@ const SheetVerifier = (() => {
       statusElem.textContent = "⏳ Đang kết nối & kiểm tra quyền truy cập...";
     }
 
-    const apiUrl = typeof WEB_APP_URL !== "undefined" ? WEB_APP_URL : window.WEB_APP_URL;
+    // Ưu tiên lấy URL từ biến toàn cục WEB_APP_URL hoặc window.WEB_APP_URL, nếu không có sẽ lấy DEFAULT_WEB_APP_URL
+    let apiUrl = DEFAULT_WEB_APP_URL;
+    if (typeof WEB_APP_URL !== "undefined" && WEB_APP_URL) {
+      apiUrl = WEB_APP_URL;
+    } else if (typeof window !== "undefined" && window.WEB_APP_URL) {
+      apiUrl = window.WEB_APP_URL;
+    }
 
     try {
       const res = await fetch(apiUrl, {
@@ -69,3 +78,8 @@ const SheetVerifier = (() => {
     getStatus
   };
 })();
+
+// Khai báo đối tượng ra môi trường toàn cục window để các file khác dễ dàng gọi tới
+if (typeof window !== "undefined") {
+  window.SheetVerifier = SheetVerifier;
+}
