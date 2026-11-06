@@ -17,6 +17,12 @@ let isRequestingGPS = false; // Biến cờ ngăn chặn gọi GPS chồng chéo
 document.addEventListener("DOMContentLoaded", () => {
   initApp();
   setupEventListeners();
+
+  // Kiểm tra ngầm quyền GPS ngay khi vào trang web
+  GPSGuideModal.checkGPSPermission();
+  // Đăng ký callback thử lại khi người dùng bấm nút trên Bottom Sheet
+  window.onGPSRetryCallback = () => {
+    if (typeof startCamera === "function") startCamera();
 });
 
 function initApp() {
@@ -202,7 +208,7 @@ function tickScan() {
   }
 }
 
-// 3. Member Điểm Danh (Đã bổ sung truyền UserId, SessionId & QR đầy đủ)
+// 3. Member Điểm Danh (Đã tích hợp bọc an toàn GPS, tự chọn cấu hình theo thiết bị & kích hoạt GPSGuideModal)
 function submitCheckinRequest(rawQrCode) {
   if (isRequestingGPS) return;
 
@@ -223,7 +229,7 @@ function submitCheckinRequest(rawQrCode) {
   // Nếu vẫn rỗng, nhắc người dùng nhập thủ công 1 lần để lưu Session
   if (!memberUserId) {
     memberUserId = prompt("Vui lòng nhập Mã người dùng (Mã NV/HS) của bạn để tiếp tục:");
-    if (memberUserId) {
+    if (memberUserId && memberUserId.trim() !== "") {
       memberUserId = memberUserId.trim().toUpperCase();
       localStorage.setItem("CHECKIN_USER_ID", memberUserId);
     } else {
@@ -255,7 +261,12 @@ function submitCheckinRequest(rawQrCode) {
     qrCode: payloadCode
   });
 
-  const gpsOptions = { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 };
+  // Cấu hình GPS tối ưu riêng cho thiết bị di động (Tăng timeout 10s cho iOS)
+  const gpsOptions = { 
+    enableHighAccuracy: true, 
+    timeout: 10000, 
+    maximumAge: 0 
+  };
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
@@ -296,8 +307,23 @@ function submitCheckinRequest(rawQrCode) {
     },
     (err) => {
       isRequestingGPS = false;
-      alert("Vui lòng bật quyền định vị GPS để điểm danh!");
-      resumeScanningWithDelay(3000);
+      showLoading(false);
+
+      // Xử lý lỗi phân loại chính xác
+      if (err.code === err.PERMISSION_DENIED) {
+        // Tự động kích hoạt Bottom Sheet hướng dẫn mở GPS theo đúng trình duyệt (Safari/Chrome)
+        if (typeof GPSGuideModal !== "undefined") {
+          GPSGuideModal.show();
+        } else {
+          alert("Trình duyệt đã bị tắt quyền vị trí. Vui lòng bật lại GPS trong Cài đặt!");
+        }
+      } else if (err.code === err.TIMEOUT) {
+        alert("Thời gian chờ lấy tín hiệu GPS quá lâu. Vui lòng bấm thử lại!");
+        resumeScanningWithDelay(2000);
+      } else {
+        alert("Không thể xác định vị trí GPS từ thiết bị. Vui lòng di chuyển ra nơi thoáng sóng!");
+        resumeScanningWithDelay(2000);
+      }
     },
     gpsOptions
   );
